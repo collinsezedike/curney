@@ -117,15 +117,6 @@ const AdminMarketDetail: React.FC = () => {
 			<AdminNav />
 
 			<main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-gray-900">
-						Market Management
-					</h1>
-					<p className="text-gray-600 mt-2">
-						Manage and resolve market
-					</p>
-				</div>
-
 				<div className="space-y-8">
 					{/* Market Details */}
 					<div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -134,16 +125,23 @@ const AdminMarketDetail: React.FC = () => {
 								{market.question}
 							</h2>
 							<span
-								className={`px-3 py-1 rounded-full text-sm font-medium ${
-									market.status === "open"
-										? "bg-green-100 text-green-800"
-										: market.status === "closed"
-										? "bg-yellow-100 text-yellow-800"
-										: market.status === "resolved"
-										? "bg-blue-100 text-blue-800"
-										: "bg-gray-100 text-gray-800"
+								className={`flex capitalize items-center gap-1 ${
+									market.status == "open"
+										? "text-green-400"
+										: market.status == "pending"
+										? "text-amber-400"
+										: "text-red-400"
 								}`}
 							>
+								<span
+									className={`w-2 h-2 rounded-full ${
+										market.status == "open"
+											? "bg-green-400"
+											: market.status == "pending"
+											? "bg-amber-400"
+											: "bg-red-400"
+									}`}
+								></span>
 								{market.status}
 							</span>
 						</div>
@@ -242,7 +240,7 @@ const AdminMarketDetail: React.FC = () => {
 									<Button
 										type="submit"
 										disabled={resolving}
-										className="bg-lime-500 hover:bg-lime-600 text-white"
+										className="cursor-pointer py-6 px-9 bg-lime-500 hover:bg-lime-600 text-white"
 									>
 										{resolving
 											? "Resolving..."
@@ -251,50 +249,6 @@ const AdminMarketDetail: React.FC = () => {
 								</form>
 							</div>
 						)}
-
-					{/* Market Actions */}
-					<div className="bg-white border border-gray-200 rounded-lg p-6">
-						<h2 className="text-xl font-bold text-gray-900 mb-4">
-							Market Actions
-						</h2>
-						<div className="space-y-4">
-							<div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-								<div>
-									<h3 className="font-medium text-gray-900">
-										View Market
-									</h3>
-									<p className="text-sm text-gray-600">
-										View this market from the user
-										perspective
-									</p>
-								</div>
-								<a
-									href={`/market/${market.id}`}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-lime-600 hover:text-lime-700 font-medium"
-								>
-									Open Market
-								</a>
-							</div>
-
-							<div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-								<div>
-									<h3 className="font-medium text-gray-900">
-										Market Status
-									</h3>
-									<p className="text-sm text-gray-600">
-										Current status: {market.status}
-									</p>
-								</div>
-								<span className="text-gray-500">
-									{market.status === "resolved"
-										? "Completed"
-										: "Active"}
-								</span>
-							</div>
-						</div>
-					</div>
 				</div>
 			</main>
 

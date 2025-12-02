@@ -45,7 +45,16 @@ let markets: Market[] = [
 	},
 ];
 
-let bets: Bet[] = [];
+let bets: Bet[] = [
+	{
+		id: "1",
+		marketId: "2",
+		prediction: 140,
+		stake: 100,
+		timestamp: new Date("2025-10-03T14:15:00"),
+		userId: "mock_l2t9a72",
+	},
+];
 let users: User[] = [];
 let platformConfig: PlatformConfig = {
 	initialized: true,

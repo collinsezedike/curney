@@ -2,13 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Button } from "@radix-ui/themes";
-import {
-	CheckCircle,
-	Clock,
-	TrendingUp,
-	Users,
-	DollarSign,
-} from "lucide-react";
+import { Clock, TrendingUp, UsersRound, DollarSign } from "lucide-react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
@@ -115,7 +109,7 @@ const AdminDashboard: React.FC = () => {
 
 					<div className="bg-white border border-gray-200 rounded-lg p-6">
 						<div className="flex items-center">
-							<Users className="w-8 h-8 text-blue-500" />
+							<UsersRound className="w-8 h-8 text-blue-500" />
 							<div className="ml-4">
 								<div className="text-2xl font-bold text-gray-900">
 									{totalBets}
@@ -180,10 +174,18 @@ const AdminDashboard: React.FC = () => {
 											onClick={() =>
 												handleApproveMarket(market.id)
 											}
-											className="bg-lime-500 hover:bg-lime-600 text-white ml-4"
+											className="cursor-pointer bg-lime-500 hover:bg-lime-600 text-white py-5 px-6 ml-4"
 										>
-											<CheckCircle className="w-4 h-4 mr-2" />
 											Approve
+										</Button>
+										<Button
+											onClick={() =>
+												handleApproveMarket(market.id)
+											}
+											variant="soft"
+											className="cursor-pointer bg-lime-100 text-lime-900 py-5 px-6 ml-4"
+										>
+											Dismiss
 										</Button>
 									</div>
 								</div>
@@ -198,12 +200,6 @@ const AdminDashboard: React.FC = () => {
 						<h2 className="text-2xl font-bold text-gray-900">
 							Active Markets
 						</h2>
-						<Link
-							to="/admin/markets"
-							className="text-lime-600 hover:text-lime-700 font-medium"
-						>
-							View All
-						</Link>
 					</div>
 
 					{activeMarkets.length === 0 ? (

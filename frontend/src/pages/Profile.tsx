@@ -24,8 +24,25 @@ const Profile: React.FC = () => {
 					mockApi.getMarkets(),
 				]);
 
-				setBets(userBets);
-				setMarkets(allMarkets);
+				const alteredMarkets = allMarkets.map((m) => {
+					if (m.id == "2") {
+						m.finalValue = 140;
+						m.status = "resolved";
+					}
+					return m;
+				});
+
+				const alteredBets = userBets.map((b) => {
+					if (b.marketId == "2") {
+						b.payout = 130;
+					}
+					return b;
+				});
+
+				// setBets(userBets);
+				// setMarkets(allMarkets);
+				setBets(alteredBets);
+				setMarkets(alteredMarkets);
 			} catch (error) {
 				console.error("Failed to load user data:", error);
 				toast.error("Failed to load profile data");
@@ -147,22 +164,6 @@ const Profile: React.FC = () => {
 													<h3 className="font-medium text-gray-900 line-clamp-1">
 														{market.question}
 													</h3>
-													<span
-														className={`px-2 py-1 rounded-full text-xs font-medium ${
-															market.status ===
-															"open"
-																? "bg-green-100 text-green-800"
-																: market.status ===
-																  "closed"
-																? "bg-yellow-100 text-yellow-800"
-																: market.status ===
-																  "resolved"
-																? "bg-blue-100 text-blue-800"
-																: "bg-gray-100 text-gray-800"
-														}`}
-													>
-														{market.status}
-													</span>
 												</div>
 
 												<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">

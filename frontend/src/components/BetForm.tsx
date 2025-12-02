@@ -114,7 +114,7 @@ const BetForm: React.FC<BetFormProps> = ({
 				<Button
 					type="submit"
 					disabled={isLoading || !prediction || !stake}
-					className="w-full bg-lime-500 hover:bg-lime-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+					className="cursor-pointer w-full bg-lime-500 hover:bg-lime-600 text-white font-medium py-6 px-4 rounded-md transition-colors duration-200"
 				>
 					{isLoading ? "Placing Bet..." : "Place Bet"}
 				</Button>
