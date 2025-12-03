@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 #[derive(InitSpace)]
 pub struct PlatformConfig {
     pub bump: u8,
+    pub treasury_bump: u8,
     pub creator_fee_bps: u16,
     pub platform_fee_bps: u16,
     pub market_proposal_fee: u64,

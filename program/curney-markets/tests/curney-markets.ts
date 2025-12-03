@@ -31,6 +31,7 @@ describe("curney-markets", () => {
 
 	let admin: anchor.web3.Keypair;
 	let platformConfig: anchor.web3.PublicKey;
+	let platformTreasury: anchor.web3.PublicKey;
 
 	const creatorFeeBps = 1000;
 	const platformFeeBps = 1000;
@@ -43,7 +44,12 @@ describe("curney-markets", () => {
 		admin = await generateAndAirdropSigner(provider);
 
 		[platformConfig] = anchor.web3.PublicKey.findProgramAddressSync(
-			[Buffer.from("platform"), admin.publicKey.toBuffer()],
+			[Buffer.from("platform-config"), admin.publicKey.toBuffer()],
+			program.programId
+		);
+
+		[platformTreasury] = anchor.web3.PublicKey.findProgramAddressSync(
+			[Buffer.from("platform-treasury"), platformConfig.toBuffer()],
 			program.programId
 		);
 	});
@@ -58,6 +64,7 @@ describe("curney-markets", () => {
 			.accountsStrict({
 				admin: admin.publicKey,
 				platformConfig,
+				platformTreasury,
 				systemProgram: SYSTEM_PROGRAM_ID,
 			})
 			.signers([admin])
