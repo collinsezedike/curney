@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::constants::{PLATFORM_CONFIG_SEED, PLATFORM_TREASURY_SEED};
+use crate::error::PlatformError;
 use crate::state::PlatformConfig;
 
 #[derive(Accounts)]
@@ -31,6 +32,26 @@ impl<'info> InitializePlatform<'info> {
         market_proposal_fee: u64,
         bumps: &InitializePlatformBumps,
     ) -> Result<()> {
+        require!(
+            creator_fee_bps <= 10_000,
+            PlatformError::InvalidCreatorFeeBps
+        );
+
+        require!(
+            platform_fee_bps <= 10_000,
+            PlatformError::InvalidPlatformFeeBps
+        );
+
+        require!(
+            (creator_fee_bps + platform_fee_bps) <= 10_000,
+            PlatformError::TotalFeeTooHigh
+        );
+
+        require!(
+            market_proposal_fee > 0,
+            PlatformError::InvalidMarketProposalFee
+        );
+
         self.platform_config.set_inner(PlatformConfig {
             bump: bumps.platform_config,
             treasury_bump: bumps.platform_treasury,

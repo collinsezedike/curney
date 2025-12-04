@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::constants::{MARKET_DESCRIPTION_MAX_LEN, MARKET_QUESTION_MAX_LEN};
+
 #[account]
 #[derive(InitSpace)]
 pub struct PlatformConfig {
@@ -13,21 +15,29 @@ pub struct PlatformConfig {
 
 #[account]
 #[derive(InitSpace)]
-pub struct Market {
+pub struct MarketConfig {
     pub bump: u8,
     pub start_time: i64,
+    pub end_time: i64,
+    pub min_prediction_price: u64,
+    #[max_len(MARKET_QUESTION_MAX_LEN)]
+    pub question: String,
+    #[max_len(MARKET_DESCRIPTION_MAX_LEN)]
+    pub description: String,
+    pub creator: Pubkey,
+    pub market_state: Pubkey,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct MarketState {
+    pub bump: u8,
     pub is_approved: bool,
     pub is_resolved: bool,
     pub resolution: Option<i64>,
     pub total_pool: u64,
     pub total_positions: u64,
-    pub min_prediction_price: u64,
-    pub end_time: i64,
-    #[max_len(64)]
-    pub question: String,
-    #[max_len(64)]
-    pub description: String,
-    pub creator: Pubkey,
+    pub market_config: Pubkey,
 }
 
 #[account]
