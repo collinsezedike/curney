@@ -30,8 +30,11 @@ describe("curney-markets", () => {
 	const program = anchor.workspace.curneyMarkets as Program<CurneyMarkets>;
 
 	let admin: anchor.web3.Keypair;
+	let creator: anchor.web3.Keypair;
 	let platformConfig: anchor.web3.PublicKey;
 	let platformTreasury: anchor.web3.PublicKey;
+	let marketConfig: anchor.web3.PublicKey;
+	let marketState: anchor.web3.PublicKey;
 
 	const creatorFeeBps = 1000;
 	const platformFeeBps = 1000;
@@ -39,9 +42,21 @@ describe("curney-markets", () => {
 		0.01 * anchor.web3.LAMPORTS_PER_SOL
 	);
 
+	const marketId = new anchor.BN(Math.floor(Math.random() * 1e17).toString());
+	const startTime = new anchor.BN(new Date().getTime() / 1000 + 60); // Added a minute extra to hedge against program checks
+	const endTime = new anchor.BN(new Date().getTime() / 1000 + 7200); // 2 hours later
+	const minPredictionPrice = new anchor.BN(
+		0.01 * anchor.web3.LAMPORTS_PER_SOL
+	);
+	const question =
+		"What will be the price of SOL at exactly 12:00 PM EST on January 1, 2026?";
+	const description =
+		"This market will resolve to a single numerical value based on an authoritative data source at a specific point in time.";
+
 	before(async () => {
 		// admin = anchor.getProvider().wallet.payer;
 		admin = await generateAndAirdropSigner(provider);
+		creator = await generateAndAirdropSigner(provider);
 
 		[platformConfig] = anchor.web3.PublicKey.findProgramAddressSync(
 			[Buffer.from("platform-config"), admin.publicKey.toBuffer()],
@@ -50,6 +65,24 @@ describe("curney-markets", () => {
 
 		[platformTreasury] = anchor.web3.PublicKey.findProgramAddressSync(
 			[Buffer.from("platform-treasury"), platformConfig.toBuffer()],
+			program.programId
+		);
+
+		[marketConfig] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("market-config"),
+				marketId.toBuffer("le", 8),
+				platformConfig.toBuffer(),
+			],
+			program.programId
+		);
+
+		[marketState] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("market-state"),
+				marketConfig.toBuffer(),
+				platformConfig.toBuffer(),
+			],
 			program.programId
 		);
 	});
@@ -80,5 +113,27 @@ describe("curney-markets", () => {
 		expect(platformConfigAccount.admin.toBase58()).equals(
 			admin.publicKey.toBase58()
 		);
+	});
+
+	it("should propose a market", async () => {
+		await program.methods
+			.proposeMarket(
+				marketId,
+				startTime,
+				endTime,
+				minPredictionPrice,
+				question,
+				description
+			)
+			.accountsStrict({
+				creator: creator.publicKey,
+				platformConfig,
+				platformTreasury,
+				marketConfig,
+				marketState,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([creator])
+			.rpc();
 	});
 });
