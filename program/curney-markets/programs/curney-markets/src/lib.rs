@@ -28,4 +28,22 @@ pub mod curney_markets {
             &ctx.bumps,
         )
     }
+
+    pub fn propose_market(
+        ctx: Context<ProposeMarket>,
+        start_time: i64,
+        end_time: i64,
+        min_prediction_price: u64,
+        question: String,
+        description: String,
+    ) -> Result<()> {
+        ctx.accounts.propose_market(
+            start_time,
+            end_time,
+            min_prediction_price,
+            question,
+            description,
+            &ctx.bumps,
+        )
+    }
 }
