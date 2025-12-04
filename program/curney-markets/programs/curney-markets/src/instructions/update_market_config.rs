@@ -8,7 +8,6 @@ use crate::error::MarketError;
 use crate::state::{MarketConfig, MarketState, PlatformConfig};
 
 #[derive(Accounts)]
-#[instruction(market_id: u64)]
 pub struct UpdateMarketConfig<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
