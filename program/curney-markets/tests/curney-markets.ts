@@ -52,7 +52,6 @@ describe("curney-markets", () => {
 		"What will be the price of SOL at exactly 12:00 PM EST on January 1, 2026?";
 	const description =
 		"This market will resolve to a single numerical value based on an authoritative data source at a specific point in time.";
-
 	before(async () => {
 		// admin = anchor.getProvider().wallet.payer;
 		admin = await generateAndAirdropSigner(provider);
@@ -171,5 +170,47 @@ describe("curney-markets", () => {
 		expect(marketStateAccount.marketConfig.toBase58()).equals(
 			marketConfig.toBase58()
 		);
+	});
+
+	it("should update market config", async () => {
+		const newStartTime = new anchor.BN(new Date().getTime() / 1000 + 60); // Added a minute extra to hedge against program checks
+		const newEndTime = new anchor.BN(new Date().getTime() / 1000 + 7200); // 2 hours later
+		const newQuestion =
+			"What will be the price of SOL at exactly 12:00 PM EST on January 1, 2026?";
+		const newDescription =
+			"This market will resolve to a single numerical value based on an authoritative data source at a specific point in time.";
+
+		await program.methods
+			.updateMarketConfig(
+				newStartTime,
+				newEndTime,
+				null, // Not updating the min prediction price
+				newQuestion,
+				newDescription
+			)
+			.accountsStrict({
+				admin: admin.publicKey,
+				marketConfig,
+				marketState,
+				platformConfig,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([admin])
+			.rpc();
+
+		const marketConfigAccount = await program.account.marketConfig.fetch(
+			marketConfig
+		);
+		expect(marketConfigAccount.question).to.equal(newQuestion);
+		expect(marketConfigAccount.description).to.equal(newDescription);
+		expect(marketConfigAccount.startTime.toNumber()).to.equal(
+			newStartTime.toNumber()
+		);
+		expect(marketConfigAccount.endTime.toNumber()).to.equal(
+			newEndTime.toNumber()
+		);
+		expect(marketConfigAccount.minPredictionPrice.toNumber()).to.equal(
+			minPredictionPrice.toNumber()
+		); // Unchanged
 	});
 });
