@@ -31,6 +31,7 @@ pub mod curney_markets {
 
     pub fn propose_market(
         ctx: Context<ProposeMarket>,
+        market_id: u64,
         start_time: i64,
         end_time: i64,
         min_prediction_price: u64,
@@ -38,6 +39,7 @@ pub mod curney_markets {
         description: String,
     ) -> Result<()> {
         ctx.accounts.propose_market(
+            market_id,
             start_time,
             end_time,
             min_prediction_price,

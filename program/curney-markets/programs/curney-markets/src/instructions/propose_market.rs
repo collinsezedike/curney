@@ -20,13 +20,13 @@ pub struct ProposeMarket<'info> {
     )]
     pub platform_config: Account<'info, PlatformConfig>,
 
-    #[account(seeds = [PLATFORM_TREASURY_SEED, platform_config.key().as_ref()], bump = platform_config.treasury_bump)]
+    #[account(mut, seeds = [PLATFORM_TREASURY_SEED, platform_config.key().as_ref()], bump = platform_config.treasury_bump)]
     pub platform_treasury: SystemAccount<'info>,
 
     #[account(
         init,
         payer = creator,
-        seeds = [MARKET_CONFIG_SEED, market_state.key().as_ref(), platform_config.key().as_ref()],
+        seeds = [MARKET_CONFIG_SEED, market_id.to_be_bytes().as_ref(), platform_config.key().as_ref()],
         space = 8 + MarketConfig::INIT_SPACE,
         bump,
     )]
@@ -47,6 +47,7 @@ pub struct ProposeMarket<'info> {
 impl<'info> ProposeMarket<'info> {
     pub fn propose_market(
         &mut self,
+        market_id: u64,
         start_time: i64,
         end_time: i64,
         min_prediction_price: u64,
@@ -87,6 +88,7 @@ impl<'info> ProposeMarket<'info> {
         // 2. Initialize the market accounts
         self.market_config.set_inner(MarketConfig {
             bump: bumps.market_config,
+            market_id,
             start_time,
             end_time,
             min_prediction_price,

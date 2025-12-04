@@ -17,6 +17,7 @@ pub struct PlatformConfig {
 #[derive(InitSpace)]
 pub struct MarketConfig {
     pub bump: u8,
+    pub market_id: u64,
     pub start_time: i64,
     pub end_time: i64,
     pub min_prediction_price: u64,
