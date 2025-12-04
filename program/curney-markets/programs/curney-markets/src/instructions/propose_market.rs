@@ -26,7 +26,7 @@ pub struct ProposeMarket<'info> {
     #[account(
         init,
         payer = creator,
-        seeds = [MARKET_CONFIG_SEED, market_id.to_be_bytes().as_ref(), platform_config.key().as_ref()],
+        seeds = [MARKET_CONFIG_SEED, market_id.to_le_bytes().as_ref(), platform_config.key().as_ref()],
         space = 8 + MarketConfig::INIT_SPACE,
         bump,
     )]
