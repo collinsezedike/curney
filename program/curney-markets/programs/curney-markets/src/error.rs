@@ -40,4 +40,13 @@ pub enum MarketError {
 
     #[msg("Market ID already exists or invalid PDA seeds.")]
     MarketAlreadyExists,
+
+    #[msg("You are not authorized to perform this action.")]
+    Unauthorized,
+
+    #[msg("This market has already been approved and cannot be modified.")]
+    MarketAlreadyApproved,
+
+    #[msg("This market has already been resolved and cannot be modified.")]
+    MarketAlreadyResolved,
 }

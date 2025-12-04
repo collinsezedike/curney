@@ -48,4 +48,21 @@ pub mod curney_markets {
             &ctx.bumps,
         )
     }
+
+    pub fn update_market_config(
+        ctx: Context<UpdateMarketConfig>,
+        start_time: Option<i64>,
+        end_time: Option<i64>,
+        min_prediction_price: Option<u64>,
+        question: Option<String>,
+        description: Option<String>,
+    ) -> Result<()> {
+        ctx.accounts.update_market_config(
+            start_time,
+            end_time,
+            min_prediction_price,
+            question,
+            description,
+        )
+    }
 }
