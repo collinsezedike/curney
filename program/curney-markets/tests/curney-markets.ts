@@ -135,5 +135,41 @@ describe("curney-markets", () => {
 			})
 			.signers([creator])
 			.rpc();
+
+		const marketConfigAccount = await program.account.marketConfig.fetch(
+			marketConfig
+		);
+		expect(marketConfigAccount.question).to.equal(question);
+		expect(marketConfigAccount.description).to.equal(description);
+		expect(marketConfigAccount.marketId.toString()).to.equal(
+			marketId.toString()
+		);
+		expect(marketConfigAccount.minPredictionPrice.toNumber()).to.equal(
+			minPredictionPrice.toNumber()
+		);
+		expect(marketConfigAccount.startTime.toNumber()).to.equal(
+			startTime.toNumber()
+		);
+		expect(marketConfigAccount.endTime.toNumber()).to.equal(
+			endTime.toNumber()
+		);
+		expect(marketConfigAccount.creator.toBase58()).equals(
+			creator.publicKey.toBase58()
+		);
+		expect(marketConfigAccount.marketState.toBase58()).equals(
+			marketState.toBase58()
+		);
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		expect(marketStateAccount.isApproved).to.be.false;
+		expect(marketStateAccount.isResolved).to.be.false;
+		expect(marketStateAccount.resolution).to.be.null;
+		expect(marketStateAccount.totalPool.toNumber()).to.equal(0);
+		expect(marketStateAccount.totalPositions.toNumber()).to.equal(0);
+		expect(marketStateAccount.marketConfig.toBase58()).equals(
+			marketConfig.toBase58()
+		);
 	});
 });
