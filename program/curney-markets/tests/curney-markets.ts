@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { CurneyMarkets } from "../target/types/curney_markets";
 import { expect } from "chai";
+import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
 
 const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
 
@@ -52,6 +53,7 @@ describe("curney-markets", () => {
 		"What will be the price of SOL at exactly 12:00 PM EST on January 1, 2026?";
 	const description =
 		"This market will resolve to a single numerical value based on an authoritative data source at a specific point in time.";
+
 	before(async () => {
 		// admin = anchor.getProvider().wallet.payer;
 		admin = await generateAndAirdropSigner(provider);
@@ -212,5 +214,24 @@ describe("curney-markets", () => {
 		expect(marketConfigAccount.minPredictionPrice.toNumber()).to.equal(
 			minPredictionPrice.toNumber()
 		); // Unchanged
+	});
+
+	it("should approve a market", async () => {
+		await program.methods
+			.approveMarket()
+			.accountsStrict({
+				admin: admin.publicKey,
+				marketConfig,
+				marketState,
+				platformConfig,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([admin])
+			.rpc();
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		expect(marketStateAccount.isApproved).to.be.true;
 	});
 });
