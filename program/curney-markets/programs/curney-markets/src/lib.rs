@@ -65,4 +65,8 @@ pub mod curney_markets {
             description,
         )
     }
+
+    pub fn approve_market(ctx: Context<ApproveMarket>) -> Result<()> {
+        ctx.accounts.approve_market()
+    }
 }
