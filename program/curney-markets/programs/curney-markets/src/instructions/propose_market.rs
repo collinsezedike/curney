@@ -3,7 +3,7 @@ use anchor_lang::system_program::{transfer, Transfer};
 
 use crate::constants::{
     MARKET_CONFIG_SEED, MARKET_DESCRIPTION_MAX_LEN, MARKET_QUESTION_MAX_LEN, MARKET_STATE_SEED,
-    PLATFORM_CONFIG_SEED, PLATFORM_TREASURY_SEED,
+    MARKET_VAULT_SEED, PLATFORM_CONFIG_SEED, PLATFORM_TREASURY_SEED,
 };
 use crate::error::MarketError;
 use crate::state::{MarketConfig, MarketState, PlatformConfig};
@@ -40,6 +40,9 @@ pub struct ProposeMarket<'info> {
         bump,
     )]
     pub market_state: Account<'info, MarketState>,
+
+    #[account(seeds = [MARKET_VAULT_SEED, market_config.key().as_ref()], bump)]
+    pub market_vault: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -88,6 +91,7 @@ impl<'info> ProposeMarket<'info> {
         // 2. Initialize the market accounts
         self.market_config.set_inner(MarketConfig {
             bump: bumps.market_config,
+            vault_bump: bumps.market_vault,
             market_id,
             start_time,
             end_time,
@@ -100,6 +104,7 @@ impl<'info> ProposeMarket<'info> {
 
         self.market_state.set_inner(MarketState {
             bump: bumps.market_state,
+            decay: (end_time - start_time / 100_000) as u64,
             is_approved: false,
             is_resolved: false,
             resolution: None,
