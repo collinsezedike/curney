@@ -59,6 +59,9 @@ pub enum MarketError {
     #[msg("Market has ended.")]
     MarketEnded,
 
+    #[msg("Market has not ended yet.")]
+    MarketNotEnded,
+
     #[msg("Stake amount is below the minimum allowed.")]
     StakeTooLow,
 

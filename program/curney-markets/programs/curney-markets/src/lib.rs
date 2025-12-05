@@ -78,4 +78,8 @@ pub mod curney_markets {
         ctx.accounts
             .place_prediction(prediction, stake_amount, &ctx.bumps)
     }
+
+    pub fn resolve_market(ctx: Context<ResolveMarket>, resolution: i64) -> Result<()> {
+        ctx.accounts.resolve_market(resolution)
+    }
 }

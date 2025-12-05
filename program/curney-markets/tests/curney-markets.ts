@@ -56,6 +56,7 @@ describe("curney-markets", () => {
 		"What will be the price of SOL at exactly 12:00 PM EST on January 1, 2026?";
 	const description =
 		"This market will resolve to a single numerical value based on an authoritative data source at a specific point in time.";
+	const resolution = new anchor.BN(150);
 
 	const prediction = new anchor.BN(140);
 	const stakeAmount = new anchor.BN(0.01 * anchor.web3.LAMPORTS_PER_SOL);
@@ -189,7 +190,7 @@ describe("curney-markets", () => {
 	});
 
 	it("should update market config", async () => {
-		const newEndTime = new anchor.BN(new Date().getTime() / 1000 + 7200); // 2 hours later
+		const newEndTime = new anchor.BN(new Date().getTime() / 1000 + 2); // Two seconds later
 		const newQuestion =
 			"What will be the price of SOL at exactly 12:00 PM EST on January 1, 2026?";
 		const newDescription =
@@ -299,6 +300,31 @@ describe("curney-markets", () => {
 		);
 		expect(marketStateAccount.creatorFeeRevenue.toNumber()).to.equal(
 			creatorRevenue
+		);
+	});
+
+	it("should resolve a market", async () => {
+		await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait the market to end
+
+		await program.methods
+			.resolveMarket(resolution)
+			.accountsStrict({
+				admin: admin.publicKey,
+				marketConfig,
+				marketState,
+				platformConfig,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([admin])
+			.rpc();
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		expect(marketStateAccount.isResolved).to.be.true;
+		expect(marketStateAccount.resolution).to.not.be.null;
+		expect(marketStateAccount.resolution.toNumber()).equals(
+			resolution.toNumber()
 		);
 	});
 });
