@@ -21,3 +21,5 @@ pub const POSITION_SEED: &[u8] = b"position";
 pub const MARKET_QUESTION_MAX_LEN: usize = 256;
 
 pub const MARKET_DESCRIPTION_MAX_LEN: usize = 1024;
+
+pub const FIXED_POINT_SCALE: u64 = 1_000_000_000;

@@ -40,6 +40,7 @@ pub struct MarketState {
     pub resolution: Option<i64>,
     pub total_pool: u64,
     pub total_positions: u64,
+    pub creator_fee_revenue: u64,
     pub market_config: Pubkey,
 }
 

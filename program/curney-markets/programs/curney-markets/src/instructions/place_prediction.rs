@@ -2,34 +2,28 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
 use crate::constants::{
-    MARKET_CONFIG_SEED, MARKET_STATE_SEED, MARKET_VAULT_SEED, PLATFORM_CONFIG_SEED, POSITION_SEED,
+    FIXED_POINT_SCALE, MARKET_CONFIG_SEED, MARKET_STATE_SEED, MARKET_VAULT_SEED,
+    PLATFORM_CONFIG_SEED, PLATFORM_TREASURY_SEED, POSITION_SEED,
 };
 use crate::error::MarketError;
 use crate::state::{MarketConfig, MarketState, PlatformConfig, Position};
 
-fn calculate_new_decay(old_decay: u64, start: i64, end: i64, now: i64) -> Result<u64> {
-    let duration = (end - start) as i128;
-    let elapsed = (now - start) as i128;
-
+fn calculate_new_decay(old_decay: u64, start_time: i64, end_time: i64, now: i64) -> Result<u64> {
+    let duration = (end_time - start_time) as u64;
     require!(duration > 0, MarketError::InvalidEndTime);
-    require!(elapsed >= 0, MarketError::MarketNotStarted);
 
-    let elapsed = elapsed.min(duration);
-
-    // Q32.32 fixed point for progress
-    let progress_fp = ((elapsed << 32) / duration) as u64;
-
-    // new_decay = old_decay * (1 - progress_fp)
-    // Must convert progress_fp to a factor
-    let one_fp: u64 = 1u64 << 32;
-
-    let remaining_fp = one_fp
-        .checked_sub(progress_fp)
+    let elapsed = (now - start_time).max(0) as u64;
+    let progress = (elapsed * FIXED_POINT_SCALE) / duration;
+    let remaining = FIXED_POINT_SCALE
+        .checked_sub(progress)
         .ok_or(MarketError::MathOverflow)?;
 
-    let new_decay = ((old_decay as u128 * remaining_fp as u128) >> 32) as u64;
+    let new_decay = (old_decay as u128)
+        .checked_mul(remaining as u128)
+        .ok_or(MarketError::MathOverflow)?
+        / (FIXED_POINT_SCALE as u128);
 
-    Ok(new_decay)
+    Ok(new_decay as u64)
 }
 
 #[derive(Accounts)]
@@ -42,6 +36,9 @@ pub struct PlacePrediction<'info> {
         bump = platform_config.bump,
     )]
     pub platform_config: Account<'info, PlatformConfig>,
+
+    #[account(mut, seeds = [PLATFORM_TREASURY_SEED, platform_config.key().as_ref()], bump = platform_config.treasury_bump)]
+    pub platform_treasury: SystemAccount<'info>,
 
     #[account(
         seeds = [MARKET_CONFIG_SEED, market_config.market_id.to_le_bytes().as_ref(), platform_config.key().as_ref()],
@@ -102,13 +99,30 @@ impl<'info> PlacePrediction<'info> {
 
         require!(now < self.market_config.end_time, MarketError::MarketEnded);
 
+        // Take platform fee
+        let platform_fee = (self.platform_config.platform_fee_bps as u64 * stake_amount) / 10000;
+
+        let cpi_program = self.system_program.to_account_info();
+        let cpi_accounts = Transfer {
+            from: self.user.to_account_info(),
+            to: self.platform_treasury.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        transfer(cpi_ctx, platform_fee)?;
+
+        // Calculate creator fee and actual user stake amount
+        let creator_fee = (self.platform_config.creator_fee_bps as u64 * stake_amount) / 10000;
+
+        let actual_stake = stake_amount - platform_fee - creator_fee;
+
+        // Transfer both the user stake and the creator fee to the market vault
         let cpi_program = self.system_program.to_account_info();
         let cpi_accounts = Transfer {
             from: self.user.to_account_info(),
             to: self.market_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        transfer(cpi_ctx, stake_amount)?;
+        transfer(cpi_ctx, actual_stake + creator_fee)?;
 
         self.position.set_inner(Position {
             bump: bumps.position,
@@ -118,20 +132,26 @@ impl<'info> PlacePrediction<'info> {
             timestamp: now,
             claimed: false,
             reward: None,
-            stake: stake_amount,
+            stake: actual_stake,
             prediction,
         });
 
         self.market_state.total_pool = self
             .market_state
             .total_pool
-            .checked_add(stake_amount)
+            .checked_add(actual_stake)
             .ok_or(MarketError::MathOverflow)?;
 
         self.market_state.total_positions = self
             .market_state
             .total_positions
             .checked_add(1)
+            .ok_or(MarketError::MathOverflow)?;
+
+        self.market_state.creator_fee_revenue = self
+            .market_state
+            .creator_fee_revenue
+            .checked_add(creator_fee)
             .ok_or(MarketError::MathOverflow)?;
 
         self.market_state.decay = calculate_new_decay(

@@ -182,6 +182,7 @@ describe("curney-markets", () => {
 		expect(marketStateAccount.resolution).to.be.null;
 		expect(marketStateAccount.totalPool.toNumber()).to.equal(0);
 		expect(marketStateAccount.totalPositions.toNumber()).to.equal(0);
+		expect(marketStateAccount.creatorFeeRevenue.toNumber()).to.equal(0);
 		expect(marketStateAccount.marketConfig.toBase58()).equals(
 			marketConfig.toBase58()
 		);
@@ -263,22 +264,26 @@ describe("curney-markets", () => {
 			.placePrediction(prediction, stakeAmount)
 			.accountsStrict({
 				user: user.publicKey,
+				position,
 				marketConfig,
 				marketState,
 				marketVault,
 				platformConfig,
-				position,
+				platformTreasury,
 				systemProgram: SYSTEM_PROGRAM_ID,
 			})
 			.signers([user])
 			.rpc();
 
+		const platformFee = (stakeAmount.toNumber() * platformFeeBps) / 10000;
+		const creatorRevenue = (stakeAmount.toNumber() * creatorFeeBps) / 10000;
+		const actualStakeAmount =
+			stakeAmount.toNumber() - platformFee - creatorRevenue;
+
 		const positionAccount = await program.account.position.fetch(position);
 		expect(positionAccount.reward).to.be.null;
 		expect(positionAccount.claimed).to.be.false;
-		expect(positionAccount.stake.toNumber()).to.equal(
-			stakeAmount.toNumber()
-		);
+		expect(positionAccount.stake.toNumber()).to.equal(actualStakeAmount);
 		expect(positionAccount.prediction.toNumber()).to.equal(
 			prediction.toNumber()
 		);
@@ -287,6 +292,13 @@ describe("curney-markets", () => {
 		);
 		expect(positionAccount.user.toBase58()).equals(
 			user.publicKey.toBase58()
+		);
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		expect(marketStateAccount.creatorFeeRevenue.toNumber()).to.equal(
+			creatorRevenue
 		);
 	});
 });
