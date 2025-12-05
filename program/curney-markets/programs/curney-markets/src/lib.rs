@@ -69,4 +69,13 @@ pub mod curney_markets {
     pub fn approve_market(ctx: Context<ApproveMarket>) -> Result<()> {
         ctx.accounts.approve_market()
     }
+
+    pub fn place_prediction(
+        ctx: Context<PlacePrediction>,
+        prediction: i64,
+        stake_amount: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .place_prediction(prediction, stake_amount, &ctx.bumps)
+    }
 }

@@ -44,9 +44,24 @@ pub enum MarketError {
     #[msg("You are not authorized to perform this action.")]
     Unauthorized,
 
-    #[msg("This market has already been approved and cannot be modified.")]
+    #[msg("Market has already been resolved and cannot be modified.")]
+    MarketAlreadyResolved,
+
+    #[msg("Market has already been approved and cannot be modified.")]
     MarketAlreadyApproved,
 
-    #[msg("This market has already been resolved and cannot be modified.")]
-    MarketAlreadyResolved,
+    #[msg("Market has not been approved and cannot accept predictions.")]
+    MarketNotApproved,
+
+    #[msg("Market has not started.")]
+    MarketNotStarted,
+
+    #[msg("Market has ended.")]
+    MarketEnded,
+
+    #[msg("Stake amount is below the minimum allowed.")]
+    StakeTooLow,
+
+    #[msg("Math overflow occurred.")]
+    MathOverflow,
 }
