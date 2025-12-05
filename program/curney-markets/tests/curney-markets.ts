@@ -32,10 +32,13 @@ describe("curney-markets", () => {
 
 	let admin: anchor.web3.Keypair;
 	let creator: anchor.web3.Keypair;
+	let user: anchor.web3.Keypair;
 	let platformConfig: anchor.web3.PublicKey;
 	let platformTreasury: anchor.web3.PublicKey;
 	let marketConfig: anchor.web3.PublicKey;
 	let marketState: anchor.web3.PublicKey;
+	let marketVault: anchor.web3.PublicKey;
+	let position: anchor.web3.PublicKey;
 
 	const creatorFeeBps = 1000;
 	const platformFeeBps = 1000;
@@ -44,7 +47,7 @@ describe("curney-markets", () => {
 	);
 
 	const marketId = new anchor.BN(Math.floor(Math.random() * 1e17).toString());
-	const startTime = new anchor.BN(new Date().getTime() / 1000 + 60); // Added a minute extra to hedge against program checks
+	const startTime = new anchor.BN(new Date().getTime() / 1000 + 1); // Added a second extra to hedge against program checks
 	const endTime = new anchor.BN(new Date().getTime() / 1000 + 7200); // 2 hours later
 	const minPredictionPrice = new anchor.BN(
 		0.01 * anchor.web3.LAMPORTS_PER_SOL
@@ -54,10 +57,14 @@ describe("curney-markets", () => {
 	const description =
 		"This market will resolve to a single numerical value based on an authoritative data source at a specific point in time.";
 
+	const prediction = new anchor.BN(140);
+	const stakeAmount = new anchor.BN(0.01 * anchor.web3.LAMPORTS_PER_SOL);
+
 	before(async () => {
 		// admin = anchor.getProvider().wallet.payer;
 		admin = await generateAndAirdropSigner(provider);
 		creator = await generateAndAirdropSigner(provider);
+		user = await generateAndAirdropSigner(provider);
 
 		[platformConfig] = anchor.web3.PublicKey.findProgramAddressSync(
 			[Buffer.from("platform-config"), admin.publicKey.toBuffer()],
@@ -84,6 +91,11 @@ describe("curney-markets", () => {
 				marketConfig.toBuffer(),
 				platformConfig.toBuffer(),
 			],
+			program.programId
+		);
+
+		[marketVault] = anchor.web3.PublicKey.findProgramAddressSync(
+			[Buffer.from("market-vault"), marketConfig.toBuffer()],
 			program.programId
 		);
 	});
@@ -132,6 +144,7 @@ describe("curney-markets", () => {
 				platformTreasury,
 				marketConfig,
 				marketState,
+				marketVault,
 				systemProgram: SYSTEM_PROGRAM_ID,
 			})
 			.signers([creator])
@@ -175,7 +188,6 @@ describe("curney-markets", () => {
 	});
 
 	it("should update market config", async () => {
-		const newStartTime = new anchor.BN(new Date().getTime() / 1000 + 60); // Added a minute extra to hedge against program checks
 		const newEndTime = new anchor.BN(new Date().getTime() / 1000 + 7200); // 2 hours later
 		const newQuestion =
 			"What will be the price of SOL at exactly 12:00 PM EST on January 1, 2026?";
@@ -184,7 +196,7 @@ describe("curney-markets", () => {
 
 		await program.methods
 			.updateMarketConfig(
-				newStartTime,
+				null, // Not updating the start time
 				newEndTime,
 				null, // Not updating the min prediction price
 				newQuestion,
@@ -205,12 +217,12 @@ describe("curney-markets", () => {
 		);
 		expect(marketConfigAccount.question).to.equal(newQuestion);
 		expect(marketConfigAccount.description).to.equal(newDescription);
-		expect(marketConfigAccount.startTime.toNumber()).to.equal(
-			newStartTime.toNumber()
-		);
 		expect(marketConfigAccount.endTime.toNumber()).to.equal(
 			newEndTime.toNumber()
 		);
+		expect(marketConfigAccount.startTime.toNumber()).to.equal(
+			startTime.toNumber()
+		); // Unchanged
 		expect(marketConfigAccount.minPredictionPrice.toNumber()).to.equal(
 			minPredictionPrice.toNumber()
 		); // Unchanged
@@ -233,5 +245,48 @@ describe("curney-markets", () => {
 			marketState
 		);
 		expect(marketStateAccount.isApproved).to.be.true;
+	});
+
+	it("should place a prediction", async () => {
+		const state = await program.account.marketState.fetch(marketState);
+		[position] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("position"),
+				state.totalPositions.toBuffer("le", 8),
+				user.publicKey.toBuffer(),
+				marketConfig.toBuffer(),
+			],
+			program.programId
+		);
+
+		await program.methods
+			.placePrediction(prediction, stakeAmount)
+			.accountsStrict({
+				user: user.publicKey,
+				marketConfig,
+				marketState,
+				marketVault,
+				platformConfig,
+				position,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([user])
+			.rpc();
+
+		const positionAccount = await program.account.position.fetch(position);
+		expect(positionAccount.reward).to.be.null;
+		expect(positionAccount.claimed).to.be.false;
+		expect(positionAccount.stake.toNumber()).to.equal(
+			stakeAmount.toNumber()
+		);
+		expect(positionAccount.prediction.toNumber()).to.equal(
+			prediction.toNumber()
+		);
+		expect(positionAccount.market.toBase58()).equals(
+			marketConfig.toBase58()
+		);
+		expect(positionAccount.user.toBase58()).equals(
+			user.publicKey.toBase58()
+		);
 	});
 });
