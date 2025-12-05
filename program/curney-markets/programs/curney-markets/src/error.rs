@@ -2,69 +2,69 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum PlatformError {
-    #[msg("Creator fee BPS must be <= 10,000.")]
+    #[msg("Creator fee BPS must be <= 10,000")]
     InvalidCreatorFeeBps,
 
-    #[msg("Platform fee BPS must be <= 10,000.")]
+    #[msg("Platform fee BPS must be <= 10,000")]
     InvalidPlatformFeeBps,
 
-    #[msg("Total fee BPS must not exceed 10,000.")]
+    #[msg("Total fee BPS must not exceed 10,000")]
     TotalFeeTooHigh,
 
-    #[msg("Market proposal fee must be greater than zero.")]
+    #[msg("Market proposal fee must be greater than zero")]
     InvalidMarketProposalFee,
 }
 
 #[error_code]
 pub enum MarketError {
-    #[msg("Start time must be in the future.")]
+    #[msg("Start time must be in the future")]
     StartTimeInPast,
 
-    #[msg("End time must be after the start time.")]
+    #[msg("End time must be after the start time")]
     InvalidEndTime,
 
-    #[msg("Question exceeds maximum allowed length.")]
+    #[msg("Question exceeds maximum allowed length")]
     QuestionTooLong,
 
-    #[msg("Resolution spec exceeds maximum allowed length.")]
+    #[msg("Resolution spec exceeds maximum allowed length")]
     DescriptionTooLong,
 
-    #[msg("Minimum prediction price must be greater than zero.")]
+    #[msg("Minimum prediction price must be greater than zero")]
     MinPredictionPriceZero,
 
-    #[msg("Creator is not authorized to propose markets.")]
+    #[msg("Creator is not authorized to propose markets")]
     UnauthorizedCreator,
 
-    #[msg("Market proposal fee not configured.")]
+    #[msg("Market proposal fee not configured")]
     MissingProposalFee,
 
-    #[msg("Market ID already exists or invalid PDA seeds.")]
+    #[msg("Market ID already exists or invalid PDA seeds")]
     MarketAlreadyExists,
 
-    #[msg("You are not authorized to perform this action.")]
+    #[msg("You are not authorized to perform this action")]
     Unauthorized,
 
-    #[msg("Market has already been resolved and cannot be modified.")]
+    #[msg("Market has already been resolved and cannot be modified")]
     MarketAlreadyResolved,
 
-    #[msg("Market has already been approved and cannot be modified.")]
+    #[msg("Market has already been approved and cannot be modified")]
     MarketAlreadyApproved,
 
-    #[msg("Market has not been approved and cannot accept predictions.")]
+    #[msg("Market has not been approved and cannot accept predictions")]
     MarketNotApproved,
 
-    #[msg("Market has not started.")]
+    #[msg("Market has not started")]
     MarketNotStarted,
 
-    #[msg("Market has ended.")]
+    #[msg("Market has ended")]
     MarketEnded,
 
-    #[msg("Market has not ended yet.")]
+    #[msg("Market has not ended yet")]
     MarketNotEnded,
 
-    #[msg("Stake amount is below the minimum allowed.")]
+    #[msg("Stake amount is below the minimum allowed")]
     StakeTooLow,
 
-    #[msg("Math overflow occurred.")]
+    #[msg("Math overflow occurred")]
     MathOverflow,
 }
