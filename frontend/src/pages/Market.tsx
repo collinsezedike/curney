@@ -9,12 +9,12 @@ import Timer from "../components/Timer";
 import WalletGate from "../components/WalletGate";
 import type { Market as MarketType, Bet } from "../utils/types";
 import { mockApi } from "../utils/mockApi";
-import { useWallet } from "../utils/wallet";
+import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, formatDate } from "../utils/helpers";
 
 const Market: React.FC = () => {
 	const { id } = useParams<{ id: string }>();
-	const { isConnected, connect, publicKey } = useWallet();
+	const { isConnected, connect, publicKey } = useSolanaWallet();
 	const [market, setMarket] = useState<MarketType | null>(null);
 	const [userBets, setUserBets] = useState<Bet[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -31,7 +31,9 @@ const Market: React.FC = () => {
 				setMarket(marketData);
 
 				if (publicKey) {
-					const bets = await mockApi.getUserBets(publicKey);
+					const bets = await mockApi.getUserBets(
+						publicKey.toBase58()
+					);
 					setUserBets(bets.filter((b) => b.marketId === id));
 				}
 			} catch (error) {
@@ -55,7 +57,7 @@ const Market: React.FC = () => {
 		try {
 			const bet = await mockApi.placeBet(
 				market.id,
-				publicKey,
+				publicKey.toBase58(),
 				data.prediction,
 				data.stake
 			);

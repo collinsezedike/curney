@@ -5,11 +5,11 @@ import Footer from "../components/Footer";
 import WalletGate from "../components/WalletGate";
 import type { Bet, Market } from "../utils/types";
 import { mockApi } from "../utils/mockApi";
-import { useWallet } from "../utils/wallet";
+import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, formatDate, truncateAddress } from "../utils/helpers";
 
 const Profile: React.FC = () => {
-	const { isConnected, connect, publicKey } = useWallet();
+	const { isConnected, connect, publicKey } = useSolanaWallet();
 	const [bets, setBets] = useState<Bet[]>([]);
 	const [markets, setMarkets] = useState<Market[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -20,7 +20,7 @@ const Profile: React.FC = () => {
 
 			try {
 				const [userBets, allMarkets] = await Promise.all([
-					mockApi.getUserBets(publicKey),
+					mockApi.getUserBets(publicKey.toBase58()),
 					mockApi.getMarkets(),
 				]);
 
@@ -98,7 +98,10 @@ const Profile: React.FC = () => {
 										Wallet Address
 									</span>
 									<div className="font-mono text-sm">
-										{truncateAddress(publicKey || "", 8)}
+										{truncateAddress(
+											publicKey?.toBase58() || "",
+											8
+										)}
 									</div>
 								</div>
 								<div>

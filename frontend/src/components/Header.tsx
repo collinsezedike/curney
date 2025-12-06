@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@radix-ui/themes";
 import { Menu, X, Wallet, Settings } from "lucide-react";
-import { useWallet } from "../utils/wallet";
+import { useSolanaWallet } from "../hooks/useSolanaWallet";
 
 const Header: React.FC = () => {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const { isConnected, isAdmin, connect, disconnect, publicKey } =
-		useWallet();
+		useSolanaWallet();
 
 	const navItems = [
 		{ path: "/", label: "Markets" },
@@ -53,8 +53,8 @@ const Header: React.FC = () => {
 						{isConnected ? (
 							<div className="flex items-center space-x-2">
 								<span className="text-sm text-gray-600">
-									{publicKey?.slice(0, 4)}...
-									{publicKey?.slice(-4)}
+									{publicKey?.toBase58().slice(0, 4)}...
+									{publicKey?.toBase58().slice(-4)}
 								</span>
 								<Button
 									onClick={disconnect}
@@ -117,8 +117,9 @@ const Header: React.FC = () => {
 								{isConnected ? (
 									<div className="space-y-2">
 										<div className="text-sm text-gray-600">
-											{publicKey?.slice(0, 4)}...
-											{publicKey?.slice(-4)}
+											{publicKey?.toBase58().slice(0, 4)}
+											...
+											{publicKey?.toBase58().slice(-4)}
 										</div>
 										<Button
 											onClick={disconnect}

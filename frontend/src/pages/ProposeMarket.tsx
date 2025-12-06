@@ -6,11 +6,11 @@ import Footer from "../components/Footer";
 import MarketForm from "../components/MarketForm";
 import WalletGate from "../components/WalletGate";
 import { mockApi } from "../utils/mockApi";
-import { useWallet } from "../utils/wallet";
+import { useSolanaWallet } from "../hooks/useSolanaWallet";
 
 const ProposeMarket: React.FC = () => {
 	const navigate = useNavigate();
-	const { isConnected, connect, publicKey } = useWallet();
+	const { isConnected, connect, publicKey } = useSolanaWallet();
 	const [creating, setCreating] = useState(false);
 
 	const handleSubmit = async (data: any) => {
