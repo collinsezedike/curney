@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::constants::{PLATFORM_CONFIG_SEED, PLATFORM_TREASURY_SEED};
+use crate::constants::{BASIS_POINT_SCALE, PLATFORM_CONFIG_SEED, PLATFORM_TREASURY_SEED};
 use crate::error::PlatformError;
 use crate::state::PlatformConfig;
 
@@ -33,17 +33,17 @@ impl<'info> InitializePlatform<'info> {
         bumps: &InitializePlatformBumps,
     ) -> Result<()> {
         require!(
-            creator_fee_bps <= 10_000,
+            creator_fee_bps <= BASIS_POINT_SCALE,
             PlatformError::InvalidCreatorFeeBps
         );
 
         require!(
-            platform_fee_bps <= 10_000,
+            platform_fee_bps <= BASIS_POINT_SCALE,
             PlatformError::InvalidPlatformFeeBps
         );
 
         require!(
-            (creator_fee_bps + platform_fee_bps) <= 10_000,
+            (creator_fee_bps + platform_fee_bps) <= BASIS_POINT_SCALE,
             PlatformError::TotalFeeTooHigh
         );
 
