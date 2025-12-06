@@ -47,6 +47,9 @@ pub enum MarketError {
     #[msg("Market has already been resolved and cannot be modified")]
     MarketAlreadyResolved,
 
+    #[msg("Market has not been resolved yet")]
+    MarketNotResolved,
+
     #[msg("Market has already been approved and cannot be modified")]
     MarketAlreadyApproved,
 
@@ -67,4 +70,13 @@ pub enum MarketError {
 
     #[msg("Math overflow occurred")]
     MathOverflow,
+}
+
+#[error_code]
+pub enum PositionError {
+    #[msg("Position reward already claimed")]
+    RewardAlreadyClaimed,
+
+    #[msg("The decay factor must be greater than zero")]
+    InvalidDecay,
 }

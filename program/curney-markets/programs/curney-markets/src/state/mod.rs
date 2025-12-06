@@ -40,6 +40,7 @@ pub struct MarketState {
     pub resolution: Option<i64>,
     pub total_pool: u64,
     pub total_positions: u64,
+    pub total_scores: Option<u128>,
     pub creator_fee_revenue: u64,
     pub market_config: Pubkey,
 }
@@ -51,6 +52,7 @@ pub struct Position {
     pub bump: u8,
     pub stake: u64,
     pub decay: u64,
+    pub index: u64,
     pub reward: Option<u64>,
     pub timestamp: i64,
     pub prediction: i64,

@@ -2,9 +2,10 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { CurneyMarkets } from "../target/types/curney_markets";
 import { expect } from "chai";
-import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
 
 const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
+const DECAY_NORMALIZATION_FACTOR = 3600;
+const FIXED_POINT_SCALE = 1e9;
 
 async function generateAndAirdropSigner(
 	provider: anchor.AnchorProvider
@@ -22,6 +23,33 @@ async function generateAndAirdropSigner(
 		signature,
 	});
 	return keypair;
+}
+
+export async function calculateTotalScores(
+	resolution: number,
+	program: anchor.Program<CurneyMarkets>,
+	marketConfig: anchor.web3.PublicKey
+): Promise<anchor.BN> {
+	const allPositionAccounts = (await program.account.position.all()).filter(
+		(p) => p.account.market.toBase58() == marketConfig.toBase58()
+	);
+
+	if (allPositionAccounts.length === 0) return new anchor.BN(0);
+
+	let total = 0;
+	for (const pos of allPositionAccounts) {
+		const dist = Math.abs(pos.account.prediction.toNumber() - resolution);
+		const decay =
+			(DECAY_NORMALIZATION_FACTOR * pos.account.decay.toNumber()) /
+			FIXED_POINT_SCALE;
+		const exponent = -Math.pow(dist / decay, 2);
+		const score = Math.exp(exponent);
+		total += score * FIXED_POINT_SCALE;
+
+		console.log({ dist, decay, exponent, score });
+	}
+
+	return new anchor.BN(total);
 }
 
 describe("curney-markets", () => {
@@ -59,6 +87,7 @@ describe("curney-markets", () => {
 	const resolution = new anchor.BN(150);
 
 	const prediction = new anchor.BN(140);
+	const secondPrediction = new anchor.BN(1);
 	const stakeAmount = new anchor.BN(0.01 * anchor.web3.LAMPORTS_PER_SOL);
 
 	before(async () => {
@@ -181,6 +210,7 @@ describe("curney-markets", () => {
 		expect(marketStateAccount.isApproved).to.be.false;
 		expect(marketStateAccount.isResolved).to.be.false;
 		expect(marketStateAccount.resolution).to.be.null;
+		expect(marketStateAccount.totalScores).to.be.null;
 		expect(marketStateAccount.totalPool.toNumber()).to.equal(0);
 		expect(marketStateAccount.totalPositions.toNumber()).to.equal(0);
 		expect(marketStateAccount.creatorFeeRevenue.toNumber()).to.equal(0);
@@ -250,11 +280,13 @@ describe("curney-markets", () => {
 	});
 
 	it("should place a prediction", async () => {
+		await new Promise((resolve) => setTimeout(resolve, 500)); // Wait the market to start
 		const state = await program.account.marketState.fetch(marketState);
+		const currentIndex = state.totalPositions;
 		[position] = anchor.web3.PublicKey.findProgramAddressSync(
 			[
 				Buffer.from("position"),
-				state.totalPositions.toBuffer("le", 8),
+				currentIndex.toBuffer("le", 8),
 				user.publicKey.toBuffer(),
 				marketConfig.toBuffer(),
 			],
@@ -285,6 +317,9 @@ describe("curney-markets", () => {
 		expect(positionAccount.reward).to.be.null;
 		expect(positionAccount.claimed).to.be.false;
 		expect(positionAccount.stake.toNumber()).to.equal(actualStakeAmount);
+		expect(positionAccount.index.toNumber()).to.equal(
+			currentIndex.toNumber()
+		);
 		expect(positionAccount.prediction.toNumber()).to.equal(
 			prediction.toNumber()
 		);
@@ -301,13 +336,82 @@ describe("curney-markets", () => {
 		expect(marketStateAccount.creatorFeeRevenue.toNumber()).to.equal(
 			creatorRevenue
 		);
+		expect(marketStateAccount.totalPositions.toNumber()).to.equal(
+			currentIndex.toNumber() + 1
+		);
+	});
+
+	it("should place another prediction", async () => {
+		const state = await program.account.marketState.fetch(marketState);
+		const currentIndex = state.totalPositions;
+		[position] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("position"),
+				currentIndex.toBuffer("le", 8),
+				user.publicKey.toBuffer(),
+				marketConfig.toBuffer(),
+			],
+			program.programId
+		);
+
+		await program.methods
+			.placePrediction(secondPrediction, stakeAmount)
+			.accountsStrict({
+				user: user.publicKey,
+				position,
+				marketConfig,
+				marketState,
+				marketVault,
+				platformConfig,
+				platformTreasury,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([user])
+			.rpc();
+
+		const platformFee = (stakeAmount.toNumber() * platformFeeBps) / 10000;
+		const creatorRevenue = (stakeAmount.toNumber() * creatorFeeBps) / 10000;
+		const actualStakeAmount =
+			stakeAmount.toNumber() - platformFee - creatorRevenue;
+
+		const positionAccount = await program.account.position.fetch(position);
+		expect(positionAccount.reward).to.be.null;
+		expect(positionAccount.claimed).to.be.false;
+		expect(positionAccount.stake.toNumber()).to.equal(actualStakeAmount);
+		expect(positionAccount.index.toNumber()).to.equal(
+			currentIndex.toNumber()
+		);
+		expect(positionAccount.prediction.toNumber()).to.equal(
+			secondPrediction.toNumber()
+		);
+		expect(positionAccount.market.toBase58()).equals(
+			marketConfig.toBase58()
+		);
+		expect(positionAccount.user.toBase58()).equals(
+			user.publicKey.toBase58()
+		);
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		expect(marketStateAccount.creatorFeeRevenue.toNumber()).to.equal(
+			creatorRevenue * 2
+		);
+		expect(marketStateAccount.totalPositions.toNumber()).to.equal(
+			currentIndex.toNumber() + 1
+		);
 	});
 
 	it("should resolve a market", async () => {
 		await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait the market to end
+		const totalScores = await calculateTotalScores(
+			resolution.toNumber(),
+			program,
+			marketConfig
+		);
 
 		await program.methods
-			.resolveMarket(resolution)
+			.resolveMarket(resolution, totalScores)
 			.accountsStrict({
 				admin: admin.publicKey,
 				marketConfig,
@@ -323,8 +427,73 @@ describe("curney-markets", () => {
 		);
 		expect(marketStateAccount.isResolved).to.be.true;
 		expect(marketStateAccount.resolution).to.not.be.null;
+		expect(marketStateAccount.totalScores.toNumber()).equals(
+			totalScores.toNumber()
+		);
 		expect(marketStateAccount.resolution.toNumber()).equals(
 			resolution.toNumber()
 		);
+	});
+
+	it("should claim a position reward", async () => {
+		[position] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("position"),
+				new anchor.BN(0).toBuffer("le", 8),
+				user.publicKey.toBuffer(),
+				marketConfig.toBuffer(),
+			],
+			program.programId
+		);
+
+		await program.methods
+			.claimReward()
+			.accountsStrict({
+				user: user.publicKey,
+				marketConfig,
+				marketState,
+				marketVault,
+				platformConfig,
+				position,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([user])
+			.rpc();
+
+		const positionAccount = await program.account.position.fetch(position);
+		console.log({ reward: positionAccount.reward.toNumber() });
+		expect(positionAccount.reward).to.not.be.null;
+		expect(positionAccount.claimed).to.be.true;
+	});
+
+	it("should claim another position reward", async () => {
+		[position] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("position"),
+				new anchor.BN(1).toBuffer("le", 8),
+				user.publicKey.toBuffer(),
+				marketConfig.toBuffer(),
+			],
+			program.programId
+		);
+
+		await program.methods
+			.claimReward()
+			.accountsStrict({
+				user: user.publicKey,
+				marketConfig,
+				marketState,
+				marketVault,
+				platformConfig,
+				position,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([user])
+			.rpc();
+
+		const positionAccount = await program.account.position.fetch(position);
+		console.log({ reward: positionAccount.reward.toNumber() });
+		expect(positionAccount.reward).to.not.be.null;
+		expect(positionAccount.claimed).to.be.true;
 	});
 });

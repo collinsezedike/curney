@@ -2,8 +2,9 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
 use crate::constants::{
-    FIXED_POINT_SCALE, MARKET_CONFIG_SEED, MARKET_DESCRIPTION_MAX_LEN, MARKET_QUESTION_MAX_LEN,
-    MARKET_STATE_SEED, MARKET_VAULT_SEED, PLATFORM_CONFIG_SEED, PLATFORM_TREASURY_SEED,
+    DECAY_DURATION_SCALE, FIXED_POINT_SCALE, MARKET_CONFIG_SEED, MARKET_DESCRIPTION_MAX_LEN,
+    MARKET_QUESTION_MAX_LEN, MARKET_STATE_SEED, MARKET_VAULT_SEED, PLATFORM_CONFIG_SEED,
+    PLATFORM_TREASURY_SEED,
 };
 use crate::error::MarketError;
 use crate::state::{MarketConfig, MarketState, PlatformConfig};
@@ -104,12 +105,13 @@ impl<'info> ProposeMarket<'info> {
 
         self.market_state.set_inner(MarketState {
             bump: bumps.market_state,
-            decay: ((end_time - start_time) as u64) * FIXED_POINT_SCALE / 100_000,
+            decay: ((end_time - start_time) as u64) * FIXED_POINT_SCALE / DECAY_DURATION_SCALE,
             is_approved: false,
             is_resolved: false,
             resolution: None,
             total_pool: 0,
             total_positions: 0,
+            total_scores: None,
             creator_fee_revenue: 0,
             market_config: self.market_config.key(),
         });

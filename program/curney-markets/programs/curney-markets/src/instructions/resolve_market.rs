@@ -32,7 +32,7 @@ pub struct ResolveMarket<'info> {
 }
 
 impl<'info> ResolveMarket<'info> {
-    pub fn resolve_market(&mut self, resolution: i64) -> Result<()> {
+    pub fn resolve_market(&mut self, resolution: i64, total_scores: u128) -> Result<()> {
         require!(
             self.admin.key() == self.platform_config.admin,
             MarketError::Unauthorized
@@ -54,6 +54,7 @@ impl<'info> ResolveMarket<'info> {
             MarketError::MarketNotEnded
         );
 
+        self.market_state.total_scores = Some(total_scores);
         self.market_state.resolution = Some(resolution);
         self.market_state.is_resolved = true;
 

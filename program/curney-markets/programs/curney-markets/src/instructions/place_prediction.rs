@@ -23,7 +23,7 @@ fn calculate_new_decay(old_decay: u64, start_time: i64, end_time: i64, now: i64)
         .ok_or(MarketError::MathOverflow)?
         / (FIXED_POINT_SCALE as u128);
 
-    Ok(new_decay as u64)
+    Ok(new_decay.max(0) as u64)
 }
 
 #[derive(Accounts)]
@@ -129,6 +129,7 @@ impl<'info> PlacePrediction<'info> {
             user: self.user.key(),
             market: self.market_config.key(),
             decay: self.market_state.decay,
+            index: self.market_state.total_positions,
             timestamp: now,
             claimed: false,
             reward: None,
