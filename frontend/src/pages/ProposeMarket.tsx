@@ -5,23 +5,39 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import MarketForm from "../components/MarketForm";
 import WalletGate from "../components/WalletGate";
-import { mockApi } from "../utils/mockApi";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
+import { connection, proposeMarket } from "../utils/program/instructions";
+import type { MarketFormData } from "../utils/types";
 
 const ProposeMarket: React.FC = () => {
 	const navigate = useNavigate();
-	const { isConnected, connect, publicKey } = useSolanaWallet();
+	const { isConnected, connect, userPublicKey, signTransaction } =
+		useSolanaWallet();
 	const [creating, setCreating] = useState(false);
 
-	const handleSubmit = async (data: any) => {
-		if (!publicKey) return;
+	const handleSubmit = async (data: MarketFormData) => {
+		if (!userPublicKey || !signTransaction) return;
 
 		setCreating(true);
+
 		try {
-			const market = await mockApi.proposeMarket({
-				...data,
-				endTime: new Date(data.endTime),
-				createdBy: publicKey,
+			const tx = await proposeMarket(
+				data.question,
+				data.description,
+				new Date(data.startTime).getTime(),
+				new Date(data.endTime).getTime(),
+				data.minPredictionPrice,
+				userPublicKey
+			);
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize()
+			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
 			});
 
 			toast.success(

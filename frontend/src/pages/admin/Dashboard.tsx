@@ -30,25 +30,13 @@ const AdminDashboard: React.FC = () => {
 		loadMarkets();
 	}, []);
 
-	const handleApproveMarket = async (marketId: string) => {
-		try {
-			const updatedMarket = await mockApi.approveMarket(marketId);
-			if (updatedMarket) {
-				setMarkets((prev) =>
-					prev.map((m) => (m.id === marketId ? updatedMarket : m))
-				);
-				toast.success("Market approved successfully!");
-			}
-		} catch (error) {
-			console.error("Failed to approve market:", error);
-			toast.error("Failed to approve market");
-		}
-	};
-
-	const pendingMarkets = markets.filter((m) => m.status === "pending");
-	const activeMarkets = markets.filter((m) => m.status === "open");
+	const pendingMarkets = markets.filter((m) => !m.isApproved);
+	const activeMarkets = markets.filter((m) => m.isApproved && !m.isResolved);
 	const totalPool = markets.reduce((sum, m) => sum + m.totalPool, 0);
-	const totalBets = markets.reduce((sum, m) => sum + m.totalBets, 0);
+	const totalPredictions = markets.reduce(
+		(sum, m) => sum + m.totalPositions,
+		0
+	);
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -112,9 +100,11 @@ const AdminDashboard: React.FC = () => {
 							<UsersRound className="w-8 h-8 text-blue-500" />
 							<div className="ml-4">
 								<div className="text-2xl font-bold text-gray-900">
-									{totalBets}
+									{totalPredictions}
 								</div>
-								<div className="text-gray-600">Total Bets</div>
+								<div className="text-gray-600">
+									Total Predictions
+								</div>
 							</div>
 						</div>
 					</div>
@@ -142,53 +132,36 @@ const AdminDashboard: React.FC = () => {
 					) : (
 						<div className="space-y-4">
 							{pendingMarkets.map((market) => (
-								<div
+								<Link
 									key={market.id}
-									className="border border-gray-200 rounded-lg p-4"
+									to={`/admin/markets/${market.id}`}
 								>
-									<div className="flex justify-between items-start mb-3">
-										<div className="flex-1">
-											<h3 className="font-semibold text-gray-900 mb-2">
-												{market.question}
-											</h3>
-											<p className="text-gray-600 text-sm mb-2">
-												{market.description}
-											</p>
-											<div className="flex items-center space-x-4 text-sm text-gray-500">
-												<span>
-													Category: {market.category}
-												</span>
-												<span>
-													Created:{" "}
-													{formatDate(
-														market.createdAt
-													)}
-												</span>
-												<span>
-													Ends:{" "}
-													{formatDate(market.endTime)}
-												</span>
-											</div>
+									<div className="border border-gray-200 rounded-lg p-4 mt-5 transition-shadow hover:shadow-md">
+										<h3 className="font-semibold text-gray-900 mb-2">
+											{market.question}
+										</h3>
+										<p className="text-gray-600 text-sm mb-2">
+											{market.description}
+										</p>
+										<div className="flex items-center space-x-4 text-sm text-gray-500">
+											<span>
+												Category: {market.category}
+											</span>
+											<span>
+												Created:{" "}
+												{formatDate(
+													new Date(market.startTime)
+												)}
+											</span>
+											<span>
+												Ends:{" "}
+												{formatDate(
+													new Date(market.endTime)
+												)}
+											</span>
 										</div>
-										<Button
-											onClick={() =>
-												handleApproveMarket(market.id)
-											}
-											className="cursor-pointer bg-lime-500 hover:bg-lime-600 text-white py-5 px-6 ml-4"
-										>
-											Approve
-										</Button>
-										<Button
-											onClick={() =>
-												handleApproveMarket(market.id)
-											}
-											variant="soft"
-											className="cursor-pointer bg-lime-100 text-lime-900 py-5 px-6 ml-4"
-										>
-											Dismiss
-										</Button>
 									</div>
-								</div>
+								</Link>
 							))}
 						</div>
 					)}
@@ -209,39 +182,34 @@ const AdminDashboard: React.FC = () => {
 					) : (
 						<div className="space-y-4">
 							{activeMarkets.slice(0, 5).map((market) => (
-								<div
+								<Link
 									key={market.id}
-									className="border border-gray-200 rounded-lg p-4"
+									to={`/admin/markets/${market.id}`}
 								>
-									<div className="flex justify-between items-start">
-										<div className="flex-1">
-											<h3 className="font-semibold text-gray-900 mb-2">
-												{market.question}
-											</h3>
-											<div className="flex items-center space-x-4 text-sm text-gray-500">
-												<span>
-													Pool:{" "}
-													{formatCurrency(
-														market.totalPool
-													)}
-												</span>
-												<span>
-													Bets: {market.totalBets}
-												</span>
-												<span>
-													Ends:{" "}
-													{formatDate(market.endTime)}
-												</span>
-											</div>
+									<div className="border border-gray-200 rounded-lg p-4 mt-5 transition-shadow hover:shadow-md">
+										<h3 className="font-semibold text-gray-900 mb-2">
+											{market.question}
+										</h3>
+										<div className="flex items-center space-x-4 text-sm text-gray-500">
+											<span>
+												Pool:{" "}
+												{formatCurrency(
+													market.totalPool
+												)}
+											</span>
+											<span>
+												Predictions:{" "}
+												{market.totalPositions}
+											</span>
+											<span>
+												Ends:{" "}
+												{formatDate(
+													new Date(market.endTime)
+												)}
+											</span>
 										</div>
-										<Link
-											to={`/admin/markets/${market.id}`}
-											className="text-lime-600 hover:text-lime-700 font-medium ml-4"
-										>
-											Manage
-										</Link>
 									</div>
-								</div>
+								</Link>
 							))}
 						</div>
 					)}

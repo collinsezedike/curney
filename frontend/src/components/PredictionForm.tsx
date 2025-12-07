@@ -1,25 +1,17 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@radix-ui/themes";
-import type { Market } from "../utils/types";
-import { formatCurrency } from "../utils/helpers";
+import { PredictionFormSchema } from "../utils/types";
+import type { Market, PredictionFormData } from "../utils/types";
 
-const betSchema = z.object({
-	prediction: z.number().min(0, "Prediction must be positive"),
-	stake: z.number().min(0.01, "Minimum stake is 0.01"),
-});
-
-type BetFormData = z.infer<typeof betSchema>;
-
-interface BetFormProps {
+interface PredictionFormProps {
 	market: Market;
-	onSubmit: (data: BetFormData) => void;
+	onSubmit: (data: PredictionFormData) => void;
 	isLoading?: boolean;
 }
 
-const BetForm: React.FC<BetFormProps> = ({
+const PredictionForm: React.FC<PredictionFormProps> = ({
 	market,
 	onSubmit,
 	isLoading = false,
@@ -31,11 +23,9 @@ const BetForm: React.FC<BetFormProps> = ({
 		register,
 		handleSubmit,
 		formState: { errors },
-	} = useForm<BetFormData>({
-		resolver: zodResolver(betSchema),
+	} = useForm<PredictionFormData>({
+		resolver: zodResolver(PredictionFormSchema),
 	});
-
-	const estimatedPayout = stake * 1.8; // Mock payout calculation
 
 	return (
 		<div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -49,7 +39,7 @@ const BetForm: React.FC<BetFormProps> = ({
 						htmlFor="prediction"
 						className="block text-sm font-medium text-gray-700 mb-2"
 					>
-						Your Prediction
+						Prediction
 					</label>
 					<input
 						{...register("prediction", { valueAsNumber: true })}
@@ -93,19 +83,13 @@ const BetForm: React.FC<BetFormProps> = ({
 				{stake > 0 && (
 					<div className="bg-gray-50 p-4 rounded-md">
 						<div className="flex justify-between text-sm">
-							<span className="text-gray-600">
-								Estimated Payout:
-							</span>
-							<span className="font-medium">
-								{formatCurrency(estimatedPayout)}
-							</span>
+							<span className="text-gray-600">Prediction:</span>
+							<span className="font-medium">{prediction}</span>
 						</div>
 						<div className="flex justify-between text-sm mt-1">
-							<span className="text-gray-600">
-								Potential Profit:
-							</span>
+							<span className="text-gray-600">Stake Amount:</span>
 							<span className="font-medium text-lime-600">
-								{formatCurrency(estimatedPayout - stake)}
+								{stake} SOL
 							</span>
 						</div>
 					</div>
@@ -114,7 +98,7 @@ const BetForm: React.FC<BetFormProps> = ({
 				<Button
 					type="submit"
 					disabled={isLoading || !prediction || !stake}
-					className="cursor-pointer w-full bg-lime-500 hover:bg-lime-600 text-white font-medium py-6 px-4 rounded-md transition-colors duration-200"
+					className="cursor-pointer w-full bg-lime-500 hover:bg-lime-600 text-white font-medium py-6 px-4 rounded-md transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
 				>
 					{isLoading ? "Placing Bet..." : "Place Bet"}
 				</Button>
@@ -123,4 +107,4 @@ const BetForm: React.FC<BetFormProps> = ({
 	);
 };
 
-export default BetForm;
+export default PredictionForm;

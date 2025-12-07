@@ -15,7 +15,7 @@ const Home: React.FC = () => {
 		const loadMarkets = async () => {
 			try {
 				const data = await mockApi.getMarkets();
-				setMarkets(data.filter((m) => m.status !== "pending"));
+				setMarkets(data.filter((m) => m.isApproved && !m.isResolved));
 			} catch (error) {
 				console.error("Failed to load markets:", error);
 			} finally {
@@ -25,8 +25,6 @@ const Home: React.FC = () => {
 
 		loadMarkets();
 	}, []);
-
-	const activeMarkets = markets.filter((m) => m.status === "open");
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -59,7 +57,7 @@ const Home: React.FC = () => {
 								<Link to="/propose">
 									<Button
 										variant="soft"
-										className="bg-lime-100 text-lime-900 px-8 py-7 text-lg cursor-pointer"
+										className="bg-lime-100 hover:bg-lime-200 text-lime-900 px-8 py-7 text-lg cursor-pointer"
 									>
 										Propose A Market
 									</Button>
@@ -81,7 +79,7 @@ const Home: React.FC = () => {
 							</div>
 						) : (
 							<MarketList
-								markets={activeMarkets}
+								markets={markets}
 								title="Active Markets"
 							/>
 						)}

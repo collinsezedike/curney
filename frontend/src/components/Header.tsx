@@ -6,7 +6,7 @@ import { useSolanaWallet } from "../hooks/useSolanaWallet";
 
 const Header: React.FC = () => {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const { isConnected, isAdmin, connect, disconnect, publicKey } =
+	const { isConnected, isAdmin, connect, disconnect, userPublicKey } =
 		useSolanaWallet();
 
 	const navItems = [
@@ -53,13 +53,13 @@ const Header: React.FC = () => {
 						{isConnected ? (
 							<div className="flex items-center space-x-2">
 								<span className="text-sm text-gray-600">
-									{publicKey?.toBase58().slice(0, 4)}...
-									{publicKey?.toBase58().slice(-4)}
+									{userPublicKey?.toBase58().slice(0, 4)}...
+									{userPublicKey?.toBase58().slice(-4)}
 								</span>
 								<Button
 									onClick={disconnect}
 									variant="soft"
-									className="bg-lime-100 text-lime-900 px-6 py-5 text-sm cursor-pointer"
+									className="bg-lime-100 hover:bg-lime-200 text-lime-900 px-6 py-5 text-sm cursor-pointer"
 								>
 									Disconnect
 								</Button>
@@ -117,9 +117,13 @@ const Header: React.FC = () => {
 								{isConnected ? (
 									<div className="space-y-2">
 										<div className="text-sm text-gray-600">
-											{publicKey?.toBase58().slice(0, 4)}
+											{userPublicKey
+												?.toBase58()
+												.slice(0, 4)}
 											...
-											{publicKey?.toBase58().slice(-4)}
+											{userPublicKey
+												?.toBase58()
+												.slice(-4)}
 										</div>
 										<Button
 											onClick={disconnect}

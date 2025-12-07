@@ -3,20 +3,22 @@ import { useParams, Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import BetForm from "../components/BetForm";
+import PredictionForm from "../components/PredictionForm";
 import PayoutGraph from "../components/PayoutGraph";
 import Timer from "../components/Timer";
 import WalletGate from "../components/WalletGate";
-import type { Market as MarketType, Bet } from "../utils/types";
+import type { Market as MarketType, Position } from "../utils/types";
 import { mockApi } from "../utils/mockApi";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, formatDate } from "../utils/helpers";
+import { connection, placePrediction } from "../utils/program/instructions";
 
 const Market: React.FC = () => {
 	const { id } = useParams<{ id: string }>();
-	const { isConnected, connect, publicKey } = useSolanaWallet();
+	const { isConnected, connect, userPublicKey, signTransaction } =
+		useSolanaWallet();
 	const [market, setMarket] = useState<MarketType | null>(null);
-	const [userBets, setUserBets] = useState<Bet[]>([]);
+	const [userPredictions, setUserPredictions] = useState<Position[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [placing, setPlacing] = useState(false);
 
@@ -25,16 +27,15 @@ const Market: React.FC = () => {
 			if (!id) return;
 			try {
 				const marketData = await mockApi.getMarket(id);
-				if (marketData?.id == "2") {
-					marketData.status = "open";
-				}
 				setMarket(marketData);
 
-				if (publicKey) {
-					const bets = await mockApi.getUserBets(
-						publicKey.toBase58()
+				if (userPublicKey) {
+					const predictions = await mockApi.getUserBets(
+						userPublicKey.toBase58()
 					);
-					setUserBets(bets.filter((b) => b.marketId === id));
+					setUserPredictions(
+						predictions.filter((b) => b.market === id)
+					);
 				}
 			} catch (error) {
 				console.error("Failed to load market:", error);
@@ -45,35 +46,39 @@ const Market: React.FC = () => {
 		};
 
 		loadMarket();
-	}, [id, publicKey]);
+	}, [id, userPublicKey]);
 
-	const handlePlaceBet = async (data: {
+	const handlePlacePrediction = async (data: {
 		prediction: number;
 		stake: number;
 	}) => {
-		if (!market || !publicKey) return;
+		if (!market || !userPublicKey || !signTransaction) return;
 
 		setPlacing(true);
+
 		try {
-			const bet = await mockApi.placeBet(
+			const tx = await placePrediction(
 				market.id,
-				publicKey.toBase58(),
 				data.prediction,
-				data.stake
+				data.stake,
+				market.totalPositions,
+				userPublicKey
 			);
-			setUserBets((prev) => [...prev, bet]);
-			setMarket((prev) =>
-				prev
-					? {
-							...prev,
-							totalPool: prev.totalPool + data.stake,
-							totalBets: prev.totalBets + 1,
-					  }
-					: null
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize()
 			);
-			toast.success("Bet placed successfully!");
-		} catch {
-			toast.error("Failed to place bet");
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
+
+			toast.success("Prediction placed successfully!");
+		} catch (error) {
+			console.error("Failed to place prediction:", error);
+			toast.error("Failed to place prediction");
 		} finally {
 			setPlacing(false);
 		}
@@ -111,8 +116,7 @@ const Market: React.FC = () => {
 		);
 	}
 
-	const canBet =
-		market.status === "open" && new Date() < new Date(market.endTime);
+	const canBet = market.isApproved && new Date() < new Date(market.endTime);
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -128,27 +132,34 @@ const Market: React.FC = () => {
 					<span>•</span>
 					<span>
 						Ends:{" "}
-						<Timer endTime={market.endTime} className="text-lg" />
+						<Timer
+							endTime={new Date(market.endTime)}
+							className="text-lg"
+						/>
 					</span>
 					<span
 						className={`flex capitalize items-center gap-1 ${
-							market.status == "open"
+							market.isResolved
+								? "text-red-400"
+								: market.isApproved
 								? "text-green-400"
-								: market.status == "pending"
-								? "text-amber-400"
-								: "text-red-400"
+								: "text-amber-400"
 						}`}
 					>
 						<span
 							className={`w-2 h-2 rounded-full ${
-								market.status == "open"
+								market.isResolved
+									? "bg-red-400"
+									: market.isApproved
 									? "bg-green-400"
-									: market.status == "pending"
-									? "bg-amber-400"
-									: "bg-red-400"
+									: "bg-amber-400"
 							}`}
 						></span>
-						{market.status}
+						{market.isResolved
+							? "Resolved"
+							: market.isApproved
+							? "Live"
+							: "Pending"}
 					</span>
 				</div>
 
@@ -167,19 +178,19 @@ const Market: React.FC = () => {
 								<div>
 									<p className="text-gray-500">Predictions</p>
 									<p className="text-gray-900 font-medium">
-										{market.totalBets}
+										{market.totalPositions}
 									</p>
 								</div>
 								<div>
 									<p className="text-gray-500">End Time</p>
 									<p className="text-gray-900 font-medium">
-										{formatDate(market.endTime)}
+										{formatDate(new Date(market.endTime))}
 									</p>
 								</div>
 							</div>
 
-							{market.status === "resolved" &&
-								market.finalValue !== undefined && (
+							{market.isResolved &&
+								market.resolution !== undefined && (
 									<div className="mt-6 p-4 bg-blue-50 rounded-lg">
 										<h3 className="font-medium text-blue-900 mb-1">
 											Final Result
@@ -187,45 +198,49 @@ const Market: React.FC = () => {
 										<p className="text-blue-800">
 											Final value:{" "}
 											<span className="font-bold">
-												{market.finalValue}
+												{market.resolution}
 											</span>
 										</p>
 									</div>
 								)}
 						</div>
 
-						{userBets.length > 0 && (
+						{userPredictions.length > 0 && (
 							<div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
 								<h3 className="text-lg font-semibold text-gray-900 mb-4">
 									Your Predictions
 								</h3>
 
 								<div className="divide-y divide-gray-100">
-									{userBets.map((bet) => (
+									{userPredictions.map((prediction) => (
 										<div
-											key={bet.id}
+											key={prediction.id}
 											className="py-3 flex justify-between"
 										>
 											<div>
 												<p className="font-medium">
-													{bet.prediction}
+													{prediction.prediction}
 												</p>
 												<p className="text-sm text-gray-500">
 													Stake:{" "}
-													{formatCurrency(bet.stake)}{" "}
+													{formatCurrency(
+														prediction.stake
+													)}{" "}
 													•{" "}
-													{formatDate(bet.timestamp)}
+													{formatDate(
+														prediction.timestamp
+													)}
 												</p>
 											</div>
 
-											{bet.payout && (
+											{prediction.reward && (
 												<div className="text-right">
 													<p className="font-medium text-lime-600">
 														{formatCurrency(
-															bet.payout
+															prediction.reward
 														)}
 													</p>
-													{!bet.claimed && (
+													{!prediction.claimed && (
 														<button className="text-sm text-lime-600 hover:text-lime-700">
 															Claim
 														</button>
@@ -246,21 +261,21 @@ const Market: React.FC = () => {
 									isConnected={isConnected}
 									onConnect={connect}
 								>
-									<BetForm
+									<PredictionForm
 										market={market}
-										onSubmit={handlePlaceBet}
+										onSubmit={handlePlacePrediction}
 										isLoading={placing}
 									/>
 								</WalletGate>
 							) : (
 								<div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
 									<h3 className="text-lg font-semibold text-gray-900 mb-2">
-										{market.status === "resolved"
+										{market.isResolved
 											? "Market Resolved"
 											: "Betting Closed"}
 									</h3>
 									<p className="text-gray-600">
-										{market.status === "resolved"
+										{market.isResolved
 											? "This market has been resolved. Check your profile for rewards."
 											: "Betting is no longer available for this market."}
 									</p>

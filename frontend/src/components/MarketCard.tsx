@@ -29,14 +29,16 @@ const MarketCard: React.FC<MarketCardProps> = ({ market }) => {
 						</div>
 						<div className="flex items-center">
 							<UsersRound className="w-4 h-4 mr-1" />
-							<span>{market.totalBets}</span>
+							<span>{market.totalPositions}</span>
 						</div>
 					</div>
 
-					{market.status === "open" && (
+					{market.isApproved && (
 						<div className="flex items-center text-lime-600">
 							<Clock className="w-4 h-4 mr-1" />
-							<span>{formatTimeRemaining(market.endTime)}</span>
+							<span>
+								{formatTimeRemaining(new Date(market.endTime))}
+							</span>
 						</div>
 					)}
 				</div>

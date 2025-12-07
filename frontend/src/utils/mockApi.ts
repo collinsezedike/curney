@@ -1,5 +1,6 @@
-import type { Market, Bet, User, PlatformConfig } from "./types";
+import type { Market, Position, PlatformConfig } from "./types";
 import { generateId } from "./helpers";
+import { number } from "zod";
 
 // Mock data storage
 let markets: Market[] = [
@@ -9,12 +10,15 @@ let markets: Market[] = [
 		description:
 			"Predict the closing price of Bitcoin (BTC) in USD on January 31, 2025, based on CoinGecko data.",
 		category: "crypto",
-		status: "open",
-		endTime: new Date("2025-01-31T23:59:59"),
+		creatorFeeRevenue: 10,
+		isApproved: true,
+		isResolved: false,
+		minPredictionPrice: 0.01,
+		endTime: new Date("2025-01-31T23:59:59").getTime(),
 		totalPool: 15420.5,
-		totalBets: 127,
-		createdBy: "admin",
-		createdAt: new Date("2025-01-01T00:00:00"),
+		totalPositions: 127,
+		creator: "admin",
+		startTime: new Date("2025-01-01T00:00:00").getTime(),
 	},
 	{
 		id: "2",
@@ -22,12 +26,15 @@ let markets: Market[] = [
 		description:
 			"Total goals scored by both teams in the FIFA World Cup final match.",
 		category: "sports",
-		status: "open",
-		endTime: new Date("2026-07-15T20:00:00"),
+		isApproved: true,
+		isResolved: false,
+		minPredictionPrice: 0.01,
+		creatorFeeRevenue: 10000,
+		endTime: new Date("2026-07-15T20:00:00").getTime(),
 		totalPool: 8750.25,
-		totalBets: 89,
-		createdBy: "user123",
-		createdAt: new Date("2025-01-02T10:30:00"),
+		totalPositions: 89,
+		creator: "user123",
+		startTime: new Date("2025-01-02T10:30:00").getTime(),
 	},
 	{
 		id: "3",
@@ -36,32 +43,35 @@ let markets: Market[] = [
 		description:
 			"Predict the closing value of the S&P 500 index on the last trading day of 2025.",
 		category: "stocks",
-		status: "pending",
-		endTime: new Date("2025-12-31T16:00:00"),
+		isApproved: false,
+		isResolved: false,
+		minPredictionPrice: 0.01,
+		creatorFeeRevenue: 10000,
+		endTime: new Date("2025-12-31T16:00:00").getTime(),
 		totalPool: 0,
-		totalBets: 0,
-		createdBy: "user456",
-		createdAt: new Date("2025-01-03T14:15:00"),
+		totalPositions: 0,
+		creator: "user456",
+		startTime: new Date("2025-01-03T14:15:00").getTime(),
 	},
 ];
 
-let bets: Bet[] = [
+let positions: Position[] = [
 	{
 		id: "1",
-		marketId: "2",
+		market: "2",
+		claimed: false,
 		prediction: 140,
 		stake: 100,
 		timestamp: new Date("2025-10-03T14:15:00"),
-		userId: "mock_l2t9a72",
+		user: "mock_l2t9a72",
 	},
 ];
-let users: User[] = [];
+
 let platformConfig: PlatformConfig = {
-	initialized: true,
-	feePercentage: 2.5,
-	minStake: 0.01,
-	maxStake: 10000,
-	adminKey: "import.meta.env.VITE_ADMIN_KEY",
+	platformFeeBps: 2.5,
+	creatorFeeBps: 2.5,
+	marketProposalFee: 0.01,
+	admin: import.meta.env.VITE_ADMIN_KEY,
 };
 
 // Mock API functions
@@ -87,10 +97,8 @@ export const mockApi = {
 		const newMarket: Market = {
 			...marketData,
 			id: generateId(),
-			status: "pending",
 			totalPool: 0,
-			totalBets: 0,
-			createdAt: new Date(),
+			totalPositions: 0,
 		};
 		markets.push(newMarket);
 		return newMarket;
@@ -99,8 +107,8 @@ export const mockApi = {
 	approveMarket: async (id: string): Promise<Market | null> => {
 		await new Promise((resolve) => setTimeout(resolve, 800));
 		const market = markets.find((m) => m.id === id);
-		if (market && market.status === "pending") {
-			market.status = "open";
+		if (market && !market.isApproved) {
+			market.isApproved = true;
 			return market;
 		}
 		return null;
@@ -108,13 +116,13 @@ export const mockApi = {
 
 	resolveMarket: async (
 		id: string,
-		finalValue: number
+		resolution: number
 	): Promise<Market | null> => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 		const market = markets.find((m) => m.id === id);
-		if (market && market.status === "open") {
-			market.status = "resolved";
-			market.finalValue = finalValue;
+		if (market && market.isApproved) {
+			market.isResolved = true;
+			market.resolution = resolution;
 			return market;
 		}
 		return null;
@@ -126,39 +134,40 @@ export const mockApi = {
 		userId: string,
 		prediction: number,
 		stake: number
-	): Promise<Bet> => {
+	): Promise<Position> => {
 		await new Promise((resolve) => setTimeout(resolve, 1200));
-		const bet: Bet = {
+		const position: Position = {
 			id: generateId(),
-			marketId,
-			userId,
+			market: marketId,
+			user: userId,
 			prediction,
 			stake,
+			claimed: false,
 			timestamp: new Date(),
 		};
-		bets.push(bet);
+		positions.push(position);
 
 		// Update market totals
 		const market = markets.find((m) => m.id === marketId);
 		if (market) {
 			market.totalPool += stake;
-			market.totalBets += 1;
+			market.totalPositions += 1;
 		}
 
-		return bet;
+		return position;
 	},
 
-	getUserBets: async (userId: string): Promise<Bet[]> => {
+	getUserBets: async (userId: string): Promise<Position[]> => {
 		await new Promise((resolve) => setTimeout(resolve, 400));
-		return bets.filter((b) => b.userId === userId);
+		return positions.filter((b) => b.user === userId);
 	},
 
 	claimReward: async (betId: string): Promise<number> => {
 		await new Promise((resolve) => setTimeout(resolve, 800));
-		const bet = bets.find((b) => b.id === betId);
-		if (bet && bet.payout && !bet.claimed) {
-			bet.claimed = true;
-			return bet.payout;
+		const prediction = positions.find((b) => b.id === betId);
+		if (prediction && prediction.reward && !prediction.claimed) {
+			prediction.claimed = true;
+			return prediction.reward;
 		}
 		return 0;
 	},

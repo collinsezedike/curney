@@ -11,8 +11,9 @@ import type { PlatformConfig as PlatformConfigType } from "../../utils/types";
 import { mockApi } from "../../utils/mockApi";
 
 const configSchema = z.object({
-	feePercentage: z.number().min(0).max(10),
-	minStake: z.number().min(0.01),
+	platformFeeBps: z.number().min(0).max(10),
+	creatorFeeBps: z.number().min(0).max(10),
+	marketProposalFee: z.number().min(0.01),
 });
 
 type ConfigFormData = z.infer<typeof configSchema>;
@@ -20,7 +21,7 @@ type ConfigFormData = z.infer<typeof configSchema>;
 const PlatformConfig: React.FC = () => {
 	const [config, setConfig] = useState<PlatformConfigType | null>(null);
 	const [loading, setLoading] = useState(true);
-	const [saving, setSaving] = useState(false);
+	const [updating, setUpdating] = useState(false);
 
 	const {
 		register,
@@ -37,8 +38,9 @@ const PlatformConfig: React.FC = () => {
 				const data = await mockApi.getPlatformConfig();
 				setConfig(data);
 				reset({
-					feePercentage: data.feePercentage,
-					minStake: data.minStake,
+					platformFeeBps: data.platformFeeBps,
+					creatorFeeBps: data.creatorFeeBps,
+					marketProposalFee: data.marketProposalFee,
 				});
 			} catch (error) {
 				console.error("Failed to load config:", error);
@@ -51,8 +53,8 @@ const PlatformConfig: React.FC = () => {
 		loadConfig();
 	}, [reset]);
 
-	const handleSave = async (data: ConfigFormData) => {
-		setSaving(true);
+	const handleUpdatePlatformConfig = async (data: ConfigFormData) => {
+		setUpdating(true);
 		try {
 			const updatedConfig = await mockApi.updatePlatformConfig(data);
 			setConfig(updatedConfig);
@@ -61,26 +63,7 @@ const PlatformConfig: React.FC = () => {
 			console.error("Failed to update config:", error);
 			toast.error("Failed to update configuration");
 		} finally {
-			setSaving(false);
-		}
-	};
-
-	const handleInitialize = async () => {
-		if (!config) return;
-
-		setSaving(true);
-		try {
-			await mockApi.initializePlatform({
-				...config,
-				initialized: true,
-			});
-			setConfig((prev) => (prev ? { ...prev, initialized: true } : null));
-			toast.success("Platform initialized successfully!");
-		} catch (error) {
-			console.error("Failed to initialize platform:", error);
-			toast.error("Failed to initialize platform");
-		} finally {
-			setSaving(false);
+			setUpdating(false);
 		}
 	};
 
@@ -118,16 +101,15 @@ const PlatformConfig: React.FC = () => {
 				</div>
 
 				<div className="mt-8 bg-white border border-gray-200 rounded-lg p-6">
-					{/* Current Configuration Display */}
 					{config && (
 						<div className="mb-5">
 							<h2 className="text-xl font-bold text-gray-900 mb-4">
 								Current Configuration
 							</h2>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 								<div className="text-center p-4 bg-gray-50 rounded-lg">
 									<div className="text-2xl font-bold text-gray-900">
-										{config.feePercentage}%
+										{config.platformFeeBps}%
 									</div>
 									<div className="text-gray-600">
 										Platform Fee
@@ -135,10 +117,18 @@ const PlatformConfig: React.FC = () => {
 								</div>
 								<div className="text-center p-4 bg-gray-50 rounded-lg">
 									<div className="text-2xl font-bold text-gray-900">
-										${config.minStake}
+										{config.creatorFeeBps}%
 									</div>
 									<div className="text-gray-600">
-										Minimum Stake
+										Creator Fee
+									</div>
+								</div>
+								<div className="text-center p-4 bg-gray-50 rounded-lg">
+									<div className="text-2xl font-bold text-gray-900">
+										${config.marketProposalFee}
+									</div>
+									<div className="text-gray-600">
+										Market Proposal Fee
 									</div>
 								</div>
 							</div>
@@ -147,64 +137,91 @@ const PlatformConfig: React.FC = () => {
 
 					<div className="bg-white border border-gray-200 rounded-lg p-6">
 						<form
-							onSubmit={handleSubmit(handleSave)}
+							onSubmit={handleSubmit(handleUpdatePlatformConfig)}
 							className="space-y-4"
 						>
 							<div>
 								<label
-									htmlFor="feePercentage"
+									htmlFor="platformFeeBps"
 									className="block text-sm font-medium text-gray-700 mb-2"
 								>
-									Fee Percentage (%)
+									Platform Fee Percentage (%)
 								</label>
 								<input
-									{...register("feePercentage", {
+									{...register("platformFeeBps", {
 										valueAsNumber: true,
 									})}
 									type="number"
-									id="feePercentage"
+									id="platformFeeBps"
 									step="0.1"
 									min="0"
 									max="10"
 									className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
 								/>
-								{errors.feePercentage && (
+								{errors.platformFeeBps && (
 									<p className="mt-1 text-sm text-red-600">
-										{errors.feePercentage.message}
+										{errors.platformFeeBps.message}
 									</p>
 								)}
 							</div>
 
 							<div>
 								<label
-									htmlFor="minStake"
+									htmlFor="creatorFeeBps"
 									className="block text-sm font-medium text-gray-700 mb-2"
 								>
-									Minimum Stake ($)
+									Creator Fee Percentage (%)
 								</label>
 								<input
-									{...register("minStake", {
+									{...register("creatorFeeBps", {
 										valueAsNumber: true,
 									})}
 									type="number"
-									id="minStake"
+									id="creatorFeeBps"
+									step="0.1"
+									min="0"
+									max="10"
+									className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+								/>
+								{errors.creatorFeeBps && (
+									<p className="mt-1 text-sm text-red-600">
+										{errors.creatorFeeBps.message}
+									</p>
+								)}
+							</div>
+
+							<div>
+								<label
+									htmlFor="marketProposalFee"
+									className="block text-sm font-medium text-gray-700 mb-2"
+								>
+									Market Proposal Fee
+								</label>
+								<input
+									{...register("marketProposalFee", {
+										valueAsNumber: true,
+									})}
+									type="number"
+									id="marketProposalFee"
 									step="0.01"
 									min="0.01"
 									className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
 								/>
-								{errors.minStake && (
+								{errors.marketProposalFee && (
 									<p className="mt-1 text-sm text-red-600">
-										{errors.minStake.message}
+										{errors.marketProposalFee.message}
 									</p>
 								)}
 							</div>
 
 							<Button
 								type="submit"
-								disabled={saving}
-								className="cursor-pointer w-full bg-lime-500 hover:bg-lime-600 text-white py-6 px-6"
+								disabled={updating}
+								className="cursor-pointer w-full bg-lime-500 hover:bg-lime-600 text-white py-6 px-6 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
 							>
-								{saving ? "Saving..." : "Update Configuration"}
+								{updating
+									? "Updating..."
+									: "Update Configuration"}
 							</Button>
 						</form>
 					</div>

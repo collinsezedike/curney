@@ -3,45 +3,45 @@ import { toast } from "react-toastify";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import WalletGate from "../components/WalletGate";
-import type { Bet, Market } from "../utils/types";
+import type { Position, Market } from "../utils/types";
 import { mockApi } from "../utils/mockApi";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, formatDate, truncateAddress } from "../utils/helpers";
 
 const Profile: React.FC = () => {
-	const { isConnected, connect, publicKey } = useSolanaWallet();
-	const [bets, setBets] = useState<Bet[]>([]);
+	const { isConnected, connect, userPublicKey } = useSolanaWallet();
+	const [predictions, setPredictions] = useState<Position[]>([]);
 	const [markets, setMarkets] = useState<Market[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
 		const loadUserData = async () => {
-			if (!publicKey) return;
+			if (!userPublicKey) return;
 
 			try {
-				const [userBets, allMarkets] = await Promise.all([
-					mockApi.getUserBets(publicKey.toBase58()),
+				const [userPredictions, allMarkets] = await Promise.all([
+					mockApi.getUserBets(userPublicKey.toBase58()),
 					mockApi.getMarkets(),
 				]);
 
 				const alteredMarkets = allMarkets.map((m) => {
 					if (m.id == "2") {
-						m.finalValue = 140;
-						m.status = "resolved";
+						m.resolution = 140;
+						m.isResolved = true;
 					}
 					return m;
 				});
 
-				const alteredBets = userBets.map((b) => {
-					if (b.marketId == "2") {
-						b.payout = 130;
+				const alteredPredictions = userPredictions.map((b) => {
+					if (b.market == "2") {
+						b.reward = 130;
 					}
 					return b;
 				});
 
 				// setBets(userBets);
 				// setMarkets(allMarkets);
-				setBets(alteredBets);
+				setPredictions(alteredPredictions);
 				setMarkets(alteredMarkets);
 			} catch (error) {
 				console.error("Failed to load user data:", error);
@@ -54,15 +54,17 @@ const Profile: React.FC = () => {
 		if (isConnected) {
 			loadUserData();
 		}
-	}, [publicKey, isConnected]);
+	}, [userPublicKey, isConnected]);
 
 	const handleClaimReward = async (betId: string) => {
 		try {
 			const reward = await mockApi.claimReward(betId);
 			if (reward > 0) {
-				setBets((prev) =>
-					prev.map((bet) =>
-						bet.id === betId ? { ...bet, claimed: true } : bet
+				setPredictions((prev) =>
+					prev.map((prediction) =>
+						prediction.id === betId
+							? { ...prediction, claimed: true }
+							: prediction
 					)
 				);
 				toast.success(`Claimed ${formatCurrency(reward)}!`);
@@ -73,11 +75,17 @@ const Profile: React.FC = () => {
 		}
 	};
 
-	const totalStaked = bets.reduce((sum, bet) => sum + bet.stake, 0);
-	const totalWinnings = bets.reduce((sum, bet) => sum + (bet.payout || 0), 0);
-	const activeBets = bets.filter((bet) => {
-		const market = markets.find((m) => m.id === bet.marketId);
-		return market && market.status === "open";
+	const totalStaked = predictions.reduce(
+		(sum, prediction) => sum + prediction.stake,
+		0
+	);
+	const totalWinnings = predictions.reduce(
+		(sum, prediction) => sum + (prediction.reward || 0),
+		0
+	);
+	const activePredictions = predictions.filter((prediction) => {
+		const market = markets.find((m) => m.id === prediction.market);
+		return market && market.isApproved;
 	}).length;
 
 	return (
@@ -99,7 +107,7 @@ const Profile: React.FC = () => {
 									</span>
 									<div className="font-mono text-sm">
 										{truncateAddress(
-											publicKey?.toBase58() || "",
+											userPublicKey?.toBase58() || "",
 											8
 										)}
 									</div>
@@ -125,7 +133,7 @@ const Profile: React.FC = () => {
 										Active Bets
 									</span>
 									<div className="font-semibold text-lg">
-										{activeBets}
+										{activePredictions}
 									</div>
 								</div>
 							</div>
@@ -144,7 +152,7 @@ const Profile: React.FC = () => {
 										Loading bets...
 									</p>
 								</div>
-							) : bets.length === 0 ? (
+							) : predictions.length === 0 ? (
 								<div className="text-center py-8">
 									<p className="text-gray-500">
 										No bets placed yet.
@@ -152,15 +160,15 @@ const Profile: React.FC = () => {
 								</div>
 							) : (
 								<div className="space-y-4">
-									{bets.map((bet) => {
+									{predictions.map((p) => {
 										const market = markets.find(
-											(m) => m.id === bet.marketId
+											(m) => m.id === p.market
 										);
 										if (!market) return null;
 
 										return (
 											<div
-												key={bet.id}
+												key={p.id}
 												className="border border-gray-200 rounded-lg p-4"
 											>
 												<div className="flex justify-between items-start mb-2">
@@ -175,7 +183,7 @@ const Profile: React.FC = () => {
 															Prediction
 														</span>
 														<div className="font-medium">
-															{bet.prediction}
+															{p.prediction}
 														</div>
 													</div>
 													<div>
@@ -184,7 +192,7 @@ const Profile: React.FC = () => {
 														</span>
 														<div className="font-medium">
 															{formatCurrency(
-																bet.stake
+																p.stake
 															)}
 														</div>
 													</div>
@@ -194,7 +202,7 @@ const Profile: React.FC = () => {
 														</span>
 														<div className="font-medium">
 															{formatDate(
-																bet.timestamp
+																p.timestamp
 															)}
 														</div>
 													</div>
@@ -203,8 +211,8 @@ const Profile: React.FC = () => {
 															Status
 														</span>
 														<div className="font-medium">
-															{bet.payout
-																? bet.claimed
+															{p.reward
+																? p.claimed
 																	? "Claimed"
 																	: "Claimable"
 																: "Pending"}
@@ -212,33 +220,33 @@ const Profile: React.FC = () => {
 													</div>
 												</div>
 
-												{market.status === "resolved" &&
-													market.finalValue !==
+												{market.isResolved &&
+													market.resolution !==
 														undefined && (
 														<div className="bg-gray-50 p-3 rounded-lg mb-3">
 															<div className="text-sm text-gray-600">
 																Final Result:{" "}
 																<span className="font-medium">
 																	{
-																		market.finalValue
+																		market.resolution
 																	}
 																</span>
 															</div>
 														</div>
 													)}
 
-												{bet.payout && !bet.claimed && (
+												{p.reward && !p.claimed && (
 													<div className="flex justify-between items-center">
 														<div className="text-lime-600 font-medium">
 															Reward:{" "}
 															{formatCurrency(
-																bet.payout
+																p.reward
 															)}
 														</div>
 														<button
 															onClick={() =>
 																handleClaimReward(
-																	bet.id
+																	p.id
 																)
 															}
 															className="bg-lime-500 hover:bg-lime-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"

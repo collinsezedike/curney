@@ -1,33 +1,66 @@
+import { z } from "zod";
+
 export interface Market {
+	creator: string;
 	id: string;
+	category: string;
 	question: string;
 	description: string;
-	category: string;
-	endTime: Date;
-	status: string;
+	endTime: number;
+	startTime: number;
+	isApproved: boolean;
+	isResolved: boolean;
 	totalPool: number;
-	totalBets: number;
-	finalValue?: number;
-	createdBy: string;
-	createdAt: Date;
+	totalPositions: number;
+	minPredictionPrice: number;
+	creatorFeeRevenue: number;
+	resolution?: number;
+	totalScores?: number;
 }
-export interface Bet {
+export interface Position {
 	id: string;
-	marketId: string;
-	userId: string;
+	market: string;
+	user: string;
 	prediction: number;
 	stake: number;
 	timestamp: Date;
-	claimed?: boolean;
-	payout?: number;
+	claimed: boolean;
+	reward?: number;
 }
-
-export interface User {}
 
 export interface PlatformConfig {
-	feePercentage: number;
-	minStake: number;
-	maxStake: number;
-	initialized: boolean;
-	adminKey: string;
+	platformFeeBps: number;
+	creatorFeeBps: number;
+	marketProposalFee: number;
+	admin: string;
 }
+
+// Zod types
+
+export const MarketFormSchema = z.object({
+	question: z.string().min(10, "Question must be at least 10 characters"),
+	description: z
+		.string()
+		.min(20, "Description must be at least 20 characters"),
+	category: z.string().min(1, "Category is required"),
+	minPredictionPrice: z
+		.number()
+		.min(0.01, "Minimum prediction price is required"),
+	startTime: z.string().min(1, "Start time is required"),
+	endTime: z.string().min(1, "End time is required"),
+});
+
+export const ResolveMarketFormSchema = z.object({
+	resolution: z.number().min(0, "Final value must be positive"),
+});
+
+export const PredictionFormSchema = z.object({
+	prediction: z.number().min(0, "Prediction must be positive"),
+	stake: z.number().min(0.01, "Minimum stake is 0.01"),
+});
+
+export type MarketFormData = z.infer<typeof MarketFormSchema>;
+
+export type ResolveFormData = z.infer<typeof ResolveMarketFormSchema>;
+
+export type PredictionFormData = z.infer<typeof PredictionFormSchema>;

@@ -1,55 +1,68 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@radix-ui/themes";
-
-const marketSchema = z.object({
-	question: z.string().min(10, "Question must be at least 10 characters"),
-	description: z
-		.string()
-		.min(20, "Description must be at least 20 characters"),
-	category: z.string().min(1, "Category is required"),
-	endTime: z.string().min(1, "End time is required"),
-});
-
-type MarketFormData = z.infer<typeof marketSchema>;
+import { zodResolver } from "@hookform/resolvers/zod";
+import { MarketFormSchema } from "../utils/types";
+import type { MarketFormData } from "../utils/types";
 
 interface MarketFormProps {
 	onSubmit: (data: MarketFormData) => void;
+	isProposing?: boolean;
 	isLoading?: boolean;
+	defaultValues?: MarketFormData;
 }
 
 const MarketForm: React.FC<MarketFormProps> = ({
 	onSubmit,
 	isLoading = false,
+	isProposing = true,
+	defaultValues,
 }) => {
 	const {
 		register,
 		handleSubmit,
-		formState: { errors },
+		formState: { errors, dirtyFields },
 	} = useForm<MarketFormData>({
-		resolver: zodResolver(marketSchema),
+		resolver: zodResolver(MarketFormSchema),
+		defaultValues: defaultValues,
 	});
+
+	const handleFormSubmit = (data: MarketFormData) => {
+		if (isProposing) return onSubmit(data);
+
+		const filteredData: Partial<MarketFormData> = {};
+		(Object.keys(data) as Array<keyof MarketFormData>).forEach((key) => {
+			if (dirtyFields[key]) filteredData[key] = data[key] as any;
+		});
+		onSubmit(filteredData as MarketFormData);
+	};
 
 	const minDateTime = new Date();
 	minDateTime.setHours(minDateTime.getHours() + 1);
 
+	const isDirty = Object.keys(dirtyFields).length > 0;
+
+	const buttonText = (() => {
+		if (isProposing) {
+			return isLoading ? "Submitting Proposal..." : "Submit Proposal";
+		}
+		if (isLoading) return "Updating Market Config...";
+		if (!isDirty) return "No Changes Detected";
+
+		return "Update Market Config";
+	})();
+
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+		<form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
 			<div>
-				<label
-					htmlFor="question"
-					className="block text-sm font-medium text-gray-700 mb-2"
-				>
+				<label className="block text-sm font-medium text-gray-700 mb-2">
 					Market Question
 				</label>
 				<input
 					{...register("question")}
 					type="text"
-					id="question"
-					placeholder="What will be the price of Bitcoin on December 31, 2024?"
-					className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+					placeholder="What will be the price of SOL on Dec 31?"
+					className="w-full px-3 py-2 border rounded-md"
 				/>
 				{errors.question && (
 					<p className="mt-1 text-sm text-red-600">
@@ -59,18 +72,14 @@ const MarketForm: React.FC<MarketFormProps> = ({
 			</div>
 
 			<div>
-				<label
-					htmlFor="description"
-					className="block text-sm font-medium text-gray-700 mb-2"
-				>
-					Description
+				<label className="block text-sm font-medium text-gray-700 mb-2">
+					Description & Resolution Criteria
 				</label>
 				<textarea
 					{...register("description")}
-					id="description"
 					rows={4}
-					placeholder="Provide additional context and resolution criteria..."
-					className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+					placeholder="Provide context, methodology, and resolution details..."
+					className="w-full px-3 py-2 border rounded-md"
 				/>
 				{errors.description && (
 					<p className="mt-1 text-sm text-red-600">
@@ -80,16 +89,12 @@ const MarketForm: React.FC<MarketFormProps> = ({
 			</div>
 
 			<div>
-				<label
-					htmlFor="category"
-					className="block text-sm font-medium text-gray-700 mb-2"
-				>
+				<label className="block text-sm font-medium text-gray-700 mb-2">
 					Category
 				</label>
 				<select
 					{...register("category")}
-					id="category"
-					className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+					className="w-full px-3 py-2 border rounded-md"
 				>
 					<option value="">Select a category</option>
 					<option value="crypto">Cryptocurrency</option>
@@ -107,18 +112,50 @@ const MarketForm: React.FC<MarketFormProps> = ({
 			</div>
 
 			<div>
-				<label
-					htmlFor="endTime"
-					className="block text-sm font-medium text-gray-700 mb-2"
-				>
+				<label className="block text-sm font-medium text-gray-700 mb-2">
+					Minimum Prediction Price
+				</label>
+				<input
+					{...register("minPredictionPrice", { valueAsNumber: true })}
+					type="number"
+					min={0.01}
+					step={0.01}
+					placeholder="Minimum stake for participation"
+					className="w-full px-3 py-2 border rounded-md"
+				/>
+				{errors.minPredictionPrice && (
+					<p className="mt-1 text-sm text-red-600">
+						{errors.minPredictionPrice.message}
+					</p>
+				)}
+			</div>
+
+			<div>
+				<label className="block text-sm font-medium text-gray-700 mb-2">
+					Start Time
+				</label>
+				<input
+					{...register("startTime")}
+					type="datetime-local"
+					min={minDateTime.toISOString().slice(0, 16)}
+					className="w-full px-3 py-2 border rounded-md"
+				/>
+				{errors.startTime && (
+					<p className="mt-1 text-sm text-red-600">
+						{errors.startTime.message}
+					</p>
+				)}
+			</div>
+
+			<div>
+				<label className="block text-sm font-medium text-gray-700 mb-2">
 					End Time
 				</label>
 				<input
 					{...register("endTime")}
 					type="datetime-local"
-					id="endTime"
 					min={minDateTime.toISOString().slice(0, 16)}
-					className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+					className="w-full px-3 py-2 border rounded-md"
 				/>
 				{errors.endTime && (
 					<p className="mt-1 text-sm text-red-600">
@@ -129,10 +166,10 @@ const MarketForm: React.FC<MarketFormProps> = ({
 
 			<Button
 				type="submit"
-				disabled={isLoading}
-				className="w-full bg-lime-500 hover:bg-lime-600 text-white font-medium py-7 px-4 rounded-md transition-colors duration-200"
+				disabled={isLoading || (!isProposing && !isDirty)}
+				className="cursor-pointer w-full bg-lime-500 text-white py-7 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
 			>
-				{isLoading ? "Creating Market..." : "Submit Proposal"}
+				{buttonText}
 			</Button>
 		</form>
 	);
