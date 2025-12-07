@@ -6,6 +6,7 @@ pub mod place_prediction;
 pub mod propose_market;
 pub mod resolve_market;
 pub mod update_market_config;
+pub mod update_platform_config;
 
 pub use approve_market::*;
 pub use claim_reward::*;
@@ -15,3 +16,4 @@ pub use place_prediction::*;
 pub use propose_market::*;
 pub use resolve_market::*;
 pub use update_market_config::*;
+pub use update_platform_config::*;

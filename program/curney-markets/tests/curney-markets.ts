@@ -571,4 +571,28 @@ describe("curney-markets", () => {
 			expect(error.toString()).to.include("Account does not exist");
 		}
 	});
+
+	it("should update platform config", async () => {
+		const newCreatorFeeBps = 100;
+		const newMarketProposalFee = new anchor.BN(
+			0.001 * anchor.web3.LAMPORTS_PER_SOL
+		);
+		await program.methods
+			.updatePlatformConfig(newCreatorFeeBps, null, newMarketProposalFee)
+			.accountsStrict({
+				admin: admin.publicKey,
+				platformConfig,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([admin])
+			.rpc();
+
+		const platformConfigAccount =
+			await program.account.platformConfig.fetch(platformConfig);
+		expect(platformConfigAccount.platformFeeBps).to.equal(platformFeeBps); // Unchanged
+		expect(platformConfigAccount.creatorFeeBps).to.equal(newCreatorFeeBps);
+		expect(platformConfigAccount.marketProposalFee.toNumber()).to.equal(
+			newMarketProposalFee.toNumber()
+		);
+	});
 });

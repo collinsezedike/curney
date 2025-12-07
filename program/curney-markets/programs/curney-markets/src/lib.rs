@@ -29,6 +29,16 @@ pub mod curney_markets {
         )
     }
 
+    pub fn update_platform_config(
+        ctx: Context<UpdatePlatformConfig>,
+        creator_fee_bps: Option<u16>,
+        platform_fee_bps: Option<u16>,
+        market_proposal_fee: Option<u64>,
+    ) -> Result<()> {
+        ctx.accounts
+            .update_platform_config(creator_fee_bps, platform_fee_bps, market_proposal_fee)
+    }
+
     pub fn propose_market(
         ctx: Context<ProposeMarket>,
         market_id: u64,
