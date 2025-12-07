@@ -12,6 +12,7 @@ import { mockApi } from "../utils/mockApi";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, formatDate } from "../utils/helpers";
 import { connection, placePrediction } from "../utils/program/instructions";
+import PredictionSpreadGraph from "../components/PredictionSpreadGraph";
 
 const Market: React.FC = () => {
 	const { id } = useParams<{ id: string }>();
@@ -165,7 +166,13 @@ const Market: React.FC = () => {
 
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
 					<div className="lg:col-span-2 space-y-10 order-1 lg:order-1">
-						<PayoutGraph className="w-full" />
+						{market.isResolved && (
+							<PayoutGraph className="w-full" />
+						)}
+
+						<PredictionSpreadGraph
+							predictions={[120, 132, 121, 140, 118, 122]}
+						/>
 
 						<div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
 							<div className="grid grid-cols-3 gap-6 text-sm">
