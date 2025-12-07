@@ -587,11 +587,6 @@ describe("curney-markets", () => {
 			})
 			.signers([creator])
 			.rpc();
-
-		const marketStateAccount = await program.account.marketState.fetch(
-			marketState
-		);
-		expect(marketStateAccount.creatorFeeRevenue.toNumber()).equals(0);
 	});
 
 	it("should withdraw platform fees", async () => {

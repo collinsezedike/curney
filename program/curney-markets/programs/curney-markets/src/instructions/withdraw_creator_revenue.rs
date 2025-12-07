@@ -58,12 +58,12 @@ impl<'info> WithdrawCreatorRevenue<'info> {
             .lamports()
             .saturating_sub(required_rent_reserve);
 
-        let amount_to_transfer = self
+        let withdrawal_amount = self
             .market_state
             .creator_fee_revenue
             .min(available_for_withdrawal);
 
-        require!(amount_to_transfer > 0, MarketError::NothingToWithdraw);
+        require!(withdrawal_amount > 0, MarketError::NothingToWithdraw);
 
         let cpi_program = self.system_program.to_account_info();
         let cpi_accounts = Transfer {
@@ -79,9 +79,12 @@ impl<'info> WithdrawCreatorRevenue<'info> {
         let signer_seeds = &[&seeds[..]];
 
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
-        transfer(cpi_ctx, amount_to_transfer)?;
+        transfer(cpi_ctx, withdrawal_amount)?;
 
-        self.market_state.creator_fee_revenue = 0;
+        self.market_state.creator_fee_revenue = self
+            .market_state
+            .creator_fee_revenue
+            .saturating_sub(withdrawal_amount);
 
         Ok(())
     }
