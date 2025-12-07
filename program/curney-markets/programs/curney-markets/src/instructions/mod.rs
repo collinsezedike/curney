@@ -7,6 +7,8 @@ pub mod propose_market;
 pub mod resolve_market;
 pub mod update_market_config;
 pub mod update_platform_config;
+pub mod withdraw_creator_revenue;
+pub mod withdraw_platform_fees;
 
 pub use approve_market::*;
 pub use claim_reward::*;
@@ -17,3 +19,5 @@ pub use propose_market::*;
 pub use resolve_market::*;
 pub use update_market_config::*;
 pub use update_platform_config::*;
+pub use withdraw_creator_revenue::*;
+pub use withdraw_platform_fees::*;

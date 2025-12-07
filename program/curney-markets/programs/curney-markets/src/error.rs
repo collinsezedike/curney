@@ -13,6 +13,12 @@ pub enum PlatformError {
 
     #[msg("Market proposal fee must be greater than zero")]
     InvalidMarketProposalFee,
+
+    #[msg("You are not authorized to perform this action")]
+    Unauthorized,
+
+    #[msg("Platform treasury has no funds to withdraw")]
+    NothingToWithdraw,
 }
 
 #[error_code]
@@ -37,6 +43,9 @@ pub enum MarketError {
 
     #[msg("Market proposal fee not configured")]
     MissingProposalFee,
+
+    #[msg("Platform treasury has no funds to withdraw")]
+    NothingToWithdraw,
 
     #[msg("Market ID already exists or invalid PDA seeds")]
     MarketAlreadyExists,

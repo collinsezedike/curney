@@ -39,6 +39,10 @@ pub mod curney_markets {
             .update_platform_config(creator_fee_bps, platform_fee_bps, market_proposal_fee)
     }
 
+    pub fn withdraw_platform_fees(ctx: Context<WithdrawPlatformFees>) -> Result<()> {
+        ctx.accounts.withdraw_platform_fees()
+    }
+
     pub fn propose_market(
         ctx: Context<ProposeMarket>,
         market_id: u64,
@@ -80,6 +84,10 @@ pub mod curney_markets {
         ctx.accounts.approve_market()
     }
 
+    pub fn dismiss_market(ctx: Context<DismissMarket>) -> Result<()> {
+        ctx.accounts.dismiss_market()
+    }
+
     pub fn place_prediction(
         ctx: Context<PlacePrediction>,
         prediction: i64,
@@ -101,7 +109,7 @@ pub mod curney_markets {
         ctx.accounts.claim_reward()
     }
 
-    pub fn dismiss_market(ctx: Context<DismissMarket>) -> Result<()> {
-        ctx.accounts.dismiss_market()
+    pub fn withdraw_creator_revenue(ctx: Context<WithdrawCreatorRevenue>) -> Result<()> {
+        ctx.accounts.withdraw_creator_revenue()
     }
 }

@@ -4,6 +4,7 @@ import { CurneyMarkets } from "../target/types/curney_markets";
 import { expect } from "chai";
 
 const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
+const RENT_SYSVAR_ACCOUNT = anchor.web3.SYSVAR_RENT_PUBKEY;
 const DECAY_NORMALIZATION_FACTOR = 3600;
 const FIXED_POINT_SCALE = 1e9;
 
@@ -570,6 +571,41 @@ describe("curney-markets", () => {
 		} catch (error) {
 			expect(error.toString()).to.include("Account does not exist");
 		}
+	});
+
+	it("should withdraw creator revenue", async () => {
+		await program.methods
+			.withdrawCreatorRevenue()
+			.accountsStrict({
+				creator: creator.publicKey,
+				marketConfig,
+				marketState,
+				marketVault,
+				platformConfig,
+				rent: RENT_SYSVAR_ACCOUNT,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([creator])
+			.rpc();
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		expect(marketStateAccount.creatorFeeRevenue.toNumber()).equals(0);
+	});
+
+	it("should withdraw platform fees", async () => {
+		await program.methods
+			.withdrawPlatformFees()
+			.accountsStrict({
+				admin: admin.publicKey,
+				platformConfig,
+				platformTreasury,
+				rent: RENT_SYSVAR_ACCOUNT,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([admin])
+			.rpc();
 	});
 
 	it("should update platform config", async () => {
