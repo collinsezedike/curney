@@ -90,4 +90,8 @@ pub mod curney_markets {
     pub fn claim_reward(ctx: Context<ClaimReward>) -> Result<()> {
         ctx.accounts.claim_reward()
     }
+
+    pub fn dismiss_market(ctx: Context<DismissMarket>) -> Result<()> {
+        ctx.accounts.dismiss_market()
+    }
 }

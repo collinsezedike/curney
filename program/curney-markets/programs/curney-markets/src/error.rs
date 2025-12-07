@@ -32,8 +32,8 @@ pub enum MarketError {
     #[msg("Minimum prediction price must be greater than zero")]
     MinPredictionPriceZero,
 
-    #[msg("Creator is not authorized to propose markets")]
-    UnauthorizedCreator,
+    #[msg("Creator account specified is not the market creator")]
+    InvalidCreator,
 
     #[msg("Market proposal fee not configured")]
     MissingProposalFee,

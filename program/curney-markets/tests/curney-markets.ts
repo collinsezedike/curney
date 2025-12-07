@@ -45,8 +45,6 @@ export async function calculateTotalScores(
 		const exponent = -Math.pow(dist / decay, 2);
 		const score = Math.exp(exponent);
 		total += score * FIXED_POINT_SCALE;
-
-		console.log({ dist, decay, exponent, score });
 	}
 
 	return new anchor.BN(total);
@@ -461,7 +459,6 @@ describe("curney-markets", () => {
 			.rpc();
 
 		const positionAccount = await program.account.position.fetch(position);
-		console.log({ reward: positionAccount.reward.toNumber() });
 		expect(positionAccount.reward).to.not.be.null;
 		expect(positionAccount.claimed).to.be.true;
 	});
@@ -492,8 +489,86 @@ describe("curney-markets", () => {
 			.rpc();
 
 		const positionAccount = await program.account.position.fetch(position);
-		console.log({ reward: positionAccount.reward.toNumber() });
 		expect(positionAccount.reward).to.not.be.null;
 		expect(positionAccount.claimed).to.be.true;
+	});
+
+	it("should dismiss a market", async () => {
+		const newMarketId = new anchor.BN(
+			Math.floor(Math.random() * 1e17).toString()
+		);
+
+		const newStartTime = new anchor.BN(new Date().getTime() / 1000 + 1);
+
+		const [newMarketConfig] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("market-config"),
+				newMarketId.toBuffer("le", 8),
+				platformConfig.toBuffer(),
+			],
+			program.programId
+		);
+
+		const [newMarketState] = anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("market-state"),
+				newMarketConfig.toBuffer(),
+				platformConfig.toBuffer(),
+			],
+			program.programId
+		);
+
+		const [newMarketVault] = anchor.web3.PublicKey.findProgramAddressSync(
+			[Buffer.from("market-vault"), newMarketConfig.toBuffer()],
+			program.programId
+		);
+
+		await program.methods
+			.proposeMarket(
+				newMarketId,
+				newStartTime,
+				endTime,
+				minPredictionPrice,
+				question,
+				description
+			)
+			.accountsStrict({
+				creator: creator.publicKey,
+				platformConfig,
+				platformTreasury,
+				marketConfig: newMarketConfig,
+				marketState: newMarketState,
+				marketVault: newMarketVault,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([creator])
+			.rpc();
+
+		await program.methods
+			.dismissMarket()
+			.accountsStrict({
+				admin: admin.publicKey,
+				creator: creator.publicKey,
+				marketConfig: newMarketConfig,
+				marketState: newMarketState,
+				marketVault: newMarketVault,
+				platformConfig,
+				platformTreasury,
+				systemProgram: SYSTEM_PROGRAM_ID,
+			})
+			.signers([admin])
+			.rpc();
+
+		try {
+			await program.account.marketConfig.fetch(marketConfig);
+		} catch (error) {
+			expect(error.toString()).to.include("Account does not exist");
+		}
+
+		try {
+			await program.account.marketState.fetch(marketState);
+		} catch (error) {
+			expect(error.toString()).to.include("Account does not exist");
+		}
 	});
 });
