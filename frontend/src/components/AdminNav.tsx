@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, Settings } from "lucide-react";
+import { BarChart3, Landmark, Settings } from "lucide-react";
 
 const AdminNav: React.FC = () => {
 	const location = useLocation();
@@ -8,6 +8,7 @@ const AdminNav: React.FC = () => {
 	const navItems = [
 		{ path: "/admin/dashboard", label: "Dashboard", icon: BarChart3 },
 		{ path: "/admin/platform", label: "Platform Config", icon: Settings },
+		{ path: "/admin/treasury", label: "Treasury", icon: Landmark },
 	];
 
 	return (

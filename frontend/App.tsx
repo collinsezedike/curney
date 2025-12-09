@@ -17,12 +17,13 @@ import Profile from "./src/pages/Profile";
 import AdminDashboard from "./src/pages/admin/Dashboard";
 import PlatformConfig from "./src/pages/admin/PlatformConfig";
 import AdminMarketDetail from "./src/pages/admin/MarketDetail";
+import PlatformTreasury from "./src/pages/admin/PlatformTreasury";
 import Unauthorized from "./src/pages/Unauthorized";
 import NotFound from "./src/pages/NotFound";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const { wallet, signTransaction } = useWallet();
+	const { wallet } = useWallet();
 
 	if (!wallet) return <Navigate to="/unauthorized" replace />;
 
@@ -53,6 +54,14 @@ const App: React.FC = () => {
 							element={
 								<AdminRoute>
 									<PlatformConfig />
+								</AdminRoute>
+							}
+						/>
+						<Route
+							path="/admin/treasury"
+							element={
+								<AdminRoute>
+									<PlatformTreasury />
 								</AdminRoute>
 							}
 						/>

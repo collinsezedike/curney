@@ -62,7 +62,7 @@ let positions: Position[] = [
 		claimed: false,
 		prediction: 140,
 		stake: 100,
-		timestamp: new Date("2025-10-03T14:15:00"),
+		timestamp: new Date("2025-10-03T14:15:00").getTime(),
 		user: "mock_l2t9a72",
 	},
 ];
@@ -128,8 +128,8 @@ export const mockApi = {
 		return null;
 	},
 
-	// Bets
-	placeBet: async (
+	// Predictions
+	placePrediction: async (
 		marketId: string,
 		userId: string,
 		prediction: number,
@@ -143,7 +143,7 @@ export const mockApi = {
 			prediction,
 			stake,
 			claimed: false,
-			timestamp: new Date(),
+			timestamp: new Date().getTime(),
 		};
 		positions.push(position);
 
@@ -162,9 +162,9 @@ export const mockApi = {
 		return positions.filter((b) => b.user === userId);
 	},
 
-	claimReward: async (betId: string): Promise<number> => {
+	claimReward: async (positionId: string): Promise<number> => {
 		await new Promise((resolve) => setTimeout(resolve, 800));
-		const prediction = positions.find((b) => b.id === betId);
+		const prediction = positions.find((b) => b.id === positionId);
 		if (prediction && prediction.reward && !prediction.claimed) {
 			prediction.claimed = true;
 			return prediction.reward;
