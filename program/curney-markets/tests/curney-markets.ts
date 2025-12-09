@@ -26,7 +26,7 @@ async function generateAndAirdropSigner(
 	return keypair;
 }
 
-export async function calculateTotalScores(
+async function calculateTotalScores(
 	resolution: number,
 	program: anchor.Program<CurneyMarkets>,
 	marketConfig: anchor.web3.PublicKey
@@ -49,6 +49,23 @@ export async function calculateTotalScores(
 	}
 
 	return new anchor.BN(total);
+}
+
+function calculateReward(
+	prediction: number,
+	resolution: number,
+	decay: number,
+	totalPool: number,
+	totalScores: number
+): anchor.BN {
+	if (totalScores <= 0) return new anchor.BN(0);
+
+	const dist = Math.abs(prediction - resolution);
+	const decayFloat = (DECAY_NORMALIZATION_FACTOR * decay) / FIXED_POINT_SCALE;
+	const exponent = -Math.pow(dist / decayFloat, 2);
+	const score = Math.exp(exponent) * FIXED_POINT_SCALE;
+	const reward = (score * totalPool) / totalScores;
+	return new anchor.BN(Math.floor(reward));
 }
 
 describe("curney-markets", () => {
@@ -462,6 +479,23 @@ describe("curney-markets", () => {
 		const positionAccount = await program.account.position.fetch(position);
 		expect(positionAccount.reward).to.not.be.null;
 		expect(positionAccount.claimed).to.be.true;
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		const totalScores = await calculateTotalScores(
+			resolution.toNumber(),
+			program,
+			marketConfig
+		);
+		const reward = calculateReward(
+			positionAccount.prediction.toNumber(),
+			marketStateAccount.resolution.toNumber(),
+			positionAccount.decay.toNumber(),
+			marketStateAccount.totalPool.toNumber(),
+			totalScores.toNumber()
+		);
+		expect(positionAccount.reward.toNumber()).to.equal(reward.toNumber());
 	});
 
 	it("should claim another position reward", async () => {
@@ -492,6 +526,23 @@ describe("curney-markets", () => {
 		const positionAccount = await program.account.position.fetch(position);
 		expect(positionAccount.reward).to.not.be.null;
 		expect(positionAccount.claimed).to.be.true;
+
+		const marketStateAccount = await program.account.marketState.fetch(
+			marketState
+		);
+		const totalScores = await calculateTotalScores(
+			resolution.toNumber(),
+			program,
+			marketConfig
+		);
+		const reward = calculateReward(
+			positionAccount.prediction.toNumber(),
+			marketStateAccount.resolution.toNumber(),
+			positionAccount.decay.toNumber(),
+			marketStateAccount.totalPool.toNumber(),
+			totalScores.toNumber()
+		);
+		expect(positionAccount.reward.toNumber()).to.equal(reward.toNumber());
 	});
 
 	it("should dismiss a market", async () => {
