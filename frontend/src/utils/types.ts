@@ -23,7 +23,7 @@ export interface Position {
 	user: string;
 	prediction: number;
 	stake: number;
-	timestamp: Date;
+	timestamp: number;
 	claimed: boolean;
 	reward?: number;
 }
