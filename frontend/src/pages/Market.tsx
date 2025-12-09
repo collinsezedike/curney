@@ -191,7 +191,7 @@ const Market: React.FC = () => {
 								<div>
 									<p className="text-gray-500">End Time</p>
 									<p className="text-gray-900 font-medium">
-										{formatDate(new Date(market.endTime))}
+										{formatDate(market.endTime)}
 									</p>
 								</div>
 							</div>

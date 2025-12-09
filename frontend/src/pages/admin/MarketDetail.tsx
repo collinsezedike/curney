@@ -282,7 +282,7 @@ const AdminMarketDetail: React.FC = () => {
 							<div>
 								<span className="text-gray-500">End Time</span>
 								<div className="font-semibold text-lg">
-									{formatDate(new Date(market.endTime))}
+									{formatDate(market.endTime)}
 								</div>
 							</div>
 						</div>

@@ -13,19 +13,16 @@ export const formatTimeRemaining = (endTime: Date): string => {
 	const now = new Date();
 	const end = new Date(endTime);
 
-	if (end <= now) {
-		return "Ended";
-	}
-
+	if (end <= now) return "Ended";
 	return formatDistanceToNow(end, { addSuffix: true });
 };
 
-export const formatDate = (date: Date): string => {
+export const formatDate = (date: number): string => {
 	return format(new Date(date), "MMM dd, yyyy HH:mm");
 };
 
 export const generateId = (): string => {
-	return Math.random().toString(36).substr(2, 9);
+	return Math.random().toString(36).slice(2, 9);
 };
 
 export const truncateAddress = (address: string, chars = 4): string => {

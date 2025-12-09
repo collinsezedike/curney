@@ -114,9 +114,7 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 							<div>
 								<span className="text-gray-500">Closes</span>
 								<div className="font-medium">
-									{formatDate(
-										new Date(currentMarket.endTime)
-									)}
+									{formatDate(currentMarket.endTime)}
 								</div>
 							</div>
 						</div>

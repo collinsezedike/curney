@@ -149,15 +149,11 @@ const AdminDashboard: React.FC = () => {
 											</span>
 											<span>
 												Created:{" "}
-												{formatDate(
-													new Date(market.startTime)
-												)}
+												{formatDate(market.startTime)}
 											</span>
 											<span>
 												Ends:{" "}
-												{formatDate(
-													new Date(market.endTime)
-												)}
+												{formatDate(market.endTime)}
 											</span>
 										</div>
 									</div>
@@ -203,9 +199,7 @@ const AdminDashboard: React.FC = () => {
 											</span>
 											<span>
 												Ends:{" "}
-												{formatDate(
-													new Date(market.endTime)
-												)}
+												{formatDate(market.endTime)}
 											</span>
 										</div>
 									</div>
