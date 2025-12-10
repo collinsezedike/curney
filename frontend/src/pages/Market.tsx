@@ -11,12 +11,12 @@ import type { Market as MarketType, Position } from "../lib/types";
 import { mockApi } from "../lib/mockApi";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, formatDate } from "../lib/helpers";
-import { connection, placePrediction } from "../lib/program/instructions";
+import { placePrediction } from "../lib/program/instructions";
 import PredictionSpreadGraph from "../components/PredictionSpreadGraph";
 
 const Market: React.FC = () => {
 	const { id } = useParams<{ id: string }>();
-	const { isConnected, connect, userPublicKey, signTransaction } =
+	const { connect, connection, isConnected, signTransaction, userPublicKey } =
 		useSolanaWallet();
 	const [market, setMarket] = useState<MarketType | null>(null);
 	const [userPredictions, setUserPredictions] = useState<Position[]>([]);

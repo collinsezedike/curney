@@ -6,12 +6,12 @@ import Footer from "../components/Footer";
 import MarketForm from "../components/MarketForm";
 import WalletGate from "../components/WalletGate";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
-import { connection, proposeMarket } from "../lib/program/instructions";
+import { proposeMarket } from "../lib/program/instructions";
 import type { MarketFormData } from "../lib/types";
 
 const ProposeMarket: React.FC = () => {
 	const navigate = useNavigate();
-	const { isConnected, connect, userPublicKey, signTransaction } =
+	const { connect, connection, isConnected, signTransaction, userPublicKey } =
 		useSolanaWallet();
 	const [creating, setCreating] = useState(false);
 

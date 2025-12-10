@@ -1,11 +1,17 @@
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import {
+	Connection,
+	PublicKey,
+	Transaction,
+	VersionedTransaction,
+} from "@solana/web3.js";
 
 interface SolanaWalletType {
 	isAdmin: boolean;
 	isConnected: boolean;
 	userPublicKey: PublicKey | null;
+	connection: Connection;
 	connect: () => void;
 	disconnect: () => Promise<void>;
 	signTransaction:
@@ -18,6 +24,7 @@ interface SolanaWalletType {
 export const useSolanaWallet = (): SolanaWalletType => {
 	const { connected, disconnect, publicKey, signTransaction } = useWallet();
 	const { setVisible } = useWalletModal();
+	const { connection } = useConnection();
 
 	const isConnected = connected;
 	const connect = () => setVisible(true);
@@ -28,6 +35,7 @@ export const useSolanaWallet = (): SolanaWalletType => {
 		isConnected,
 		userPublicKey: publicKey,
 		signTransaction,
+		connection,
 		connect,
 		disconnect,
 	};

@@ -8,17 +8,16 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
 import MarketForm from "../../components/MarketForm";
+import { useSolanaWallet } from "../../hooks/useSolanaWallet";
 import { mockApi } from "../../lib/mockApi";
 import { formatCurrency, formatDate } from "../../lib/helpers";
 import { ResolveMarketFormSchema } from "../../lib/types";
 import type { Market, MarketFormData, ResolveFormData } from "../../lib/types";
 import {
 	approveMarket,
-	connection,
 	resolveMarket,
 	updateMarketConfig,
 } from "../../lib/program/instructions";
-import { useSolanaWallet } from "../../hooks/useSolanaWallet";
 
 const mapMarketToFormData = (market: Market): MarketFormData => {
 	const formatForInput = (isoString: string): string => {
@@ -37,7 +36,7 @@ const mapMarketToFormData = (market: Market): MarketFormData => {
 
 const AdminMarketDetail: React.FC = () => {
 	const { id } = useParams<{ id: string }>();
-	const { isConnected, connect, userPublicKey, signTransaction } =
+	const { connect, connection, isConnected, signTransaction, userPublicKey } =
 		useSolanaWallet();
 
 	const [market, setMarket] = useState<Market | null>(null);
