@@ -8,20 +8,16 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
 import MarketForm from "../../components/MarketForm";
-import { mockApi } from "../../utils/mockApi";
-import { formatCurrency, formatDate } from "../../utils/helpers";
-import { ResolveMarketFormSchema } from "../../utils/types";
-import type {
-	Market,
-	MarketFormData,
-	ResolveFormData,
-} from "../../utils/types";
+import { mockApi } from "../../lib/mockApi";
+import { formatCurrency, formatDate } from "../../lib/helpers";
+import { ResolveMarketFormSchema } from "../../lib/types";
+import type { Market, MarketFormData, ResolveFormData } from "../../lib/types";
 import {
 	approveMarket,
 	connection,
 	resolveMarket,
 	updateMarketConfig,
-} from "../../utils/program/instructions";
+} from "../../lib/program/instructions";
 import { useSolanaWallet } from "../../hooks/useSolanaWallet";
 
 const mapMarketToFormData = (market: Market): MarketFormData => {

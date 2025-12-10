@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@radix-ui/themes";
-import { PredictionFormSchema } from "../utils/types";
-import type { Market, PredictionFormData } from "../utils/types";
+import { PredictionFormSchema } from "../lib/types";
+import type { Market, PredictionFormData } from "../lib/types";
 
 interface PredictionFormProps {
 	market: Market;

@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Clock, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { Position, Market } from "../utils/types";
+import type { Position, Market } from "../lib/types";
 import {
 	formatTimeRemaining,
 	formatCurrency,
 	formatDate,
-} from "../utils/helpers";
+} from "../lib/helpers";
 
 interface UserContextData {
 	market: Market;

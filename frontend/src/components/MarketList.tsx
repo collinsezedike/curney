@@ -1,6 +1,6 @@
 import React from "react";
 import MarketCard from "./MarketCard";
-import type { Market } from "../utils/types";
+import type { Market } from "../lib/types";
 
 interface MarketListProps {
 	markets: Market[];

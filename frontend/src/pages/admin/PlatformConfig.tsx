@@ -7,8 +7,8 @@ import { Button } from "@radix-ui/themes";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
-import type { PlatformConfig as PlatformConfigType } from "../../utils/types";
-import { mockApi } from "../../utils/mockApi";
+import type { PlatformConfig as PlatformConfigType } from "../../lib/types";
+import { mockApi } from "../../lib/mockApi";
 
 const configSchema = z.object({
 	platformFeeBps: z.number().min(0).max(10),

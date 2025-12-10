@@ -6,9 +6,9 @@ import { Clock, TrendingUp, UsersRound, DollarSign } from "lucide-react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
-import type { Market } from "../../utils/types";
-import { mockApi } from "../../utils/mockApi";
-import { formatCurrency, formatDate } from "../../utils/helpers";
+import type { Market } from "../../lib/types";
+import { mockApi } from "../../lib/mockApi";
+import { formatCurrency, formatDate } from "../../lib/helpers";
 
 const AdminDashboard: React.FC = () => {
 	const [markets, setMarkets] = useState<Market[]>([]);

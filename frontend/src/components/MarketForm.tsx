@@ -2,8 +2,8 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@radix-ui/themes";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MarketFormSchema } from "../utils/types";
-import type { MarketFormData } from "../utils/types";
+import { MarketFormSchema } from "../lib/types";
+import type { MarketFormData } from "../lib/types";
 
 interface MarketFormProps {
 	onSubmit: (data: MarketFormData) => void;

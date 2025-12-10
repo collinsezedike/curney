@@ -4,9 +4,9 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import WalletGate from "../components/WalletGate";
 import MarketCard from "../components/MarketCard";
-import type { Position, Market } from "../utils/types";
+import type { Position, Market } from "../lib/types";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
-import { formatCurrency, truncateAddress } from "../utils/helpers";
+import { formatCurrency, truncateAddress } from "../lib/helpers";
 
 const mockResolvedMarketsData: Market[] = [
 	{

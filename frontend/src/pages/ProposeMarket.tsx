@@ -6,8 +6,8 @@ import Footer from "../components/Footer";
 import MarketForm from "../components/MarketForm";
 import WalletGate from "../components/WalletGate";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
-import { connection, proposeMarket } from "../utils/program/instructions";
-import type { MarketFormData } from "../utils/types";
+import { connection, proposeMarket } from "../lib/program/instructions";
+import type { MarketFormData } from "../lib/types";
 
 const ProposeMarket: React.FC = () => {
 	const navigate = useNavigate();

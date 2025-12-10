@@ -7,11 +7,11 @@ import PredictionForm from "../components/PredictionForm";
 import PayoutGraph from "../components/PayoutGraph";
 import Timer from "../components/Timer";
 import WalletGate from "../components/WalletGate";
-import type { Market as MarketType, Position } from "../utils/types";
-import { mockApi } from "../utils/mockApi";
+import type { Market as MarketType, Position } from "../lib/types";
+import { mockApi } from "../lib/mockApi";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
-import { formatCurrency, formatDate } from "../utils/helpers";
-import { connection, placePrediction } from "../utils/program/instructions";
+import { formatCurrency, formatDate } from "../lib/helpers";
+import { connection, placePrediction } from "../lib/program/instructions";
 import PredictionSpreadGraph from "../components/PredictionSpreadGraph";
 
 const Market: React.FC = () => {

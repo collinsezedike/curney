@@ -4,8 +4,8 @@ import { Button } from "@radix-ui/themes";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import MarketList from "../components/MarketList";
-import type { Market } from "../utils/types";
-import { mockApi } from "../utils/mockApi";
+import type { Market } from "../lib/types";
+import { mockApi } from "../lib/mockApi";
 
 const Home: React.FC = () => {
 	const [markets, setMarkets] = useState<Market[]>([]);

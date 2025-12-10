@@ -4,7 +4,7 @@ import { Button } from "@radix-ui/themes";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
-import { formatCurrency } from "../../utils/helpers";
+import { formatCurrency } from "../../lib/helpers";
 
 const PlatformTreasury: React.FC = () => {
 	const [balance, setBalance] = useState<number | null>(null);
