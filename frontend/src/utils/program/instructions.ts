@@ -127,6 +127,152 @@ const buildTransaction = async (
 	return new VersionedTransaction(message);
 };
 
+export const fetchPlatformConfigAccount = async (platformConfig: string) => {
+	try {
+		const platformConfigPubKey = new PublicKey(platformConfig);
+		return await program.account.platformConfig.fetch(platformConfigPubKey);
+	} catch {
+		return null;
+	}
+};
+
+export const fetchMarketStateAccount = async (marketState: string) => {
+	try {
+		const marketStatePubKey = new PublicKey(marketState);
+		return await program.account.marketState.fetch(marketStatePubKey);
+	} catch {
+		return null;
+	}
+};
+
+export const fetchAllMarketStateAccounts = async () => {
+	try {
+		return await program.account.marketState.all();
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllApprovedMarketStateAccounts = async () => {
+	try {
+		return (await fetchAllMarketStateAccounts()).filter(
+			(m) => m.account.isApproved
+		);
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllResolvedMarketStateAccounts = async () => {
+	try {
+		return (await fetchAllApprovedMarketStateAccounts()).filter(
+			(m) => m.account.isResolved
+		);
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllProposedMarketStateAccounts = async (creator: string) => {
+	try {
+		const proposedMarketConfigPublicKeyStrings = (
+			await fetchAllProposedMarketConfigAccounts(creator)
+		).map((m) => m.publicKey.toBase58());
+
+		if (proposedMarketConfigPublicKeyStrings) {
+			return (await fetchAllMarketStateAccounts()).filter(
+				(m) =>
+					m.account.marketConfig.toBase58() in
+					proposedMarketConfigPublicKeyStrings
+			);
+		} else return [];
+	} catch {
+		return [];
+	}
+};
+
+export const fetchMarketConfigAccount = async (marketConfig: string) => {
+	try {
+		const marketConfigPubKey = new PublicKey(marketConfig);
+		return await program.account.marketConfig.fetch(marketConfigPubKey);
+	} catch {
+		return null;
+	}
+};
+
+export const fetchAllMarketConfigAccounts = async () => {
+	try {
+		return await program.account.marketConfig.all();
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllApprovedMarketConfigAccounts = async () => {
+	try {
+		const approvedMarketStatePublicKeyStrings = (
+			await fetchAllApprovedMarketStateAccounts()
+		).map((m) => m.publicKey.toBase58());
+
+		if (approvedMarketStatePublicKeyStrings) {
+			return (await fetchAllMarketConfigAccounts()).filter(
+				(m) =>
+					m.account.marketState.toBase58() in
+					approvedMarketStatePublicKeyStrings
+			);
+		} else return [];
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllResolvedMarketConfigAccounts = async () => {
+	try {
+		const resolvedMarketStatePublicKeyStrings = (
+			await fetchAllResolvedMarketStateAccounts()
+		).map((m) => m.publicKey.toBase58());
+
+		if (resolvedMarketStatePublicKeyStrings) {
+			return (await fetchAllMarketConfigAccounts()).filter(
+				(m) =>
+					m.account.marketState.toBase58() in
+					resolvedMarketStatePublicKeyStrings
+			);
+		} else return [];
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllProposedMarketConfigAccounts = async (creator: string) => {
+	try {
+		return (await fetchAllMarketConfigAccounts()).filter(
+			(m) => m.account.creator.toBase58() == creator
+		);
+	} catch {
+		return [];
+	}
+};
+
+export const fetchPositionAccount = async (position: string) => {
+	try {
+		const positionPubKey = new PublicKey(position);
+		return await program.account.position.fetch(positionPubKey);
+	} catch {
+		return null;
+	}
+};
+
+export const fetchAllUserPositionAccounts = async (user: string) => {
+	try {
+		return (await program.account.position.all()).filter(
+			(p) => p.account.user.toBase58() == user
+		);
+	} catch {
+		return [];
+	}
+};
+
 export const proposeMarket = async (
 	question: string,
 	description: string,
