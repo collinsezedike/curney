@@ -45,6 +45,23 @@ export const calculateTotalScores = async (
 	return new anchor.BN(total);
 };
 
+export const calculateReward = (
+	prediction: number,
+	resolution: number,
+	decay: number,
+	totalPool: number,
+	totalScores: number
+): anchor.BN => {
+	if (totalScores <= 0) return new anchor.BN(0);
+
+	const dist = Math.abs(prediction - resolution);
+	const decayFloat = (DECAY_NORMALIZATION_FACTOR * decay) / FIXED_POINT_SCALE;
+	const exponent = -Math.pow(dist / decayFloat, 2);
+	const score = Math.exp(exponent) * FIXED_POINT_SCALE;
+	const reward = (score * totalPool) / totalScores;
+	return new anchor.BN(Math.floor(reward));
+};
+
 export const getMarketConfigPDA = (marketId: string) => {
 	const [marketConfig] = anchor.web3.PublicKey.findProgramAddressSync(
 		[
