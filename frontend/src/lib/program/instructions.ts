@@ -21,6 +21,9 @@ import {
 	program,
 } from "./utils";
 
+const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
+
+const RENT_SYSVAR_ACCOUNT = anchor.web3.SYSVAR_RENT_PUBKEY;
 interface UpdateMarketConfigParams {
 	marketId: string;
 	admin: PublicKey;
@@ -31,7 +34,12 @@ interface UpdateMarketConfigParams {
 	description?: string;
 }
 
-const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
+interface UpdatePlatformConfigParams {
+	admin: PublicKey;
+	creatorFeeBps?: number;
+	platformFeeBps?: number;
+	marketProposalFee?: number;
+}
 
 const buildTransaction = async (
 	feePayer: PublicKey,
@@ -134,6 +142,60 @@ export const approveMarket = async (marketId: string, admin: PublicKey) => {
 	return await buildTransaction(admin, [ix]);
 };
 
+export const dismissMarket = async (
+	marketConfig: string,
+	creator: string,
+	admin: PublicKey
+) => {
+	const marketConfigPubkey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubkey);
+	const marketVault = getMarketVaultPDA(marketConfigPubkey);
+	const creatorPubkey = new PublicKey(creator);
+
+	const ix = await program.methods
+		.dismissMarket()
+		.accountsStrict({
+			admin,
+			creator: creatorPubkey,
+			marketConfig: marketConfigPubkey,
+			marketState,
+			marketVault,
+			platformConfig: PLATFORM_CONFIG,
+			platformTreasury: PLATFORM_TREASURY,
+			systemProgram: SYSTEM_PROGRAM_ID,
+		})
+		.instruction();
+
+	return await buildTransaction(admin, [ix]);
+};
+
+export const resolveMarket = async (
+	marketId: string,
+	resolution: number,
+	admin: PublicKey
+) => {
+	const marketConfig = getMarketConfigPDA(marketId);
+	const marketState = getMarketStatePDA(marketConfig);
+	const totalScores = await calculateTotalScores(
+		resolution,
+		program,
+		marketConfig
+	);
+
+	const ix = await program.methods
+		.resolveMarket(new anchor.BN(resolution), totalScores)
+		.accountsStrict({
+			admin,
+			marketConfig,
+			marketState,
+			platformConfig: PLATFORM_CONFIG,
+			systemProgram: SYSTEM_PROGRAM_ID,
+		})
+		.instruction();
+
+	return await buildTransaction(admin, [ix]);
+};
+
 export const placePrediction = async (
 	marketId: string,
 	prediction: number,
@@ -166,25 +228,85 @@ export const placePrediction = async (
 	return await buildTransaction(user, [ix]);
 };
 
-export const resolveMarket = async (
-	marketId: string,
-	resolution: number,
-	admin: PublicKey
+export const claimReward = async (
+	marketConfig: string,
+	position: string,
+	user: PublicKey
 ) => {
-	const marketConfig = getMarketConfigPDA(marketId);
-	const marketState = getMarketStatePDA(marketConfig);
-	const totalScores = await calculateTotalScores(
-		resolution,
-		program,
-		marketConfig
-	);
+	const marketConfigPubkey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubkey);
+	const marketVault = getMarketVaultPDA(marketConfigPubkey);
+	const positionPubkey = new PublicKey(position);
 
 	const ix = await program.methods
-		.resolveMarket(new anchor.BN(resolution), totalScores)
+		.claimReward()
+		.accountsStrict({
+			user,
+			position: positionPubkey,
+			marketConfig: marketConfigPubkey,
+			marketState,
+			marketVault,
+			platformConfig: PLATFORM_CONFIG,
+			systemProgram: SYSTEM_PROGRAM_ID,
+		})
+		.instruction();
+
+	return await buildTransaction(user, [ix]);
+};
+
+export const withdrawCreatorRevenue = async (
+	marketConfig: string,
+	creator: PublicKey
+) => {
+	const marketConfigPubkey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubkey);
+	const marketVault = getMarketVaultPDA(marketConfigPubkey);
+
+	const ix = await program.methods
+		.withdrawCreatorRevenue()
+		.accountsStrict({
+			creator,
+			marketConfig: marketConfigPubkey,
+			marketState,
+			marketVault,
+			platformConfig: PLATFORM_CONFIG,
+			rent: RENT_SYSVAR_ACCOUNT,
+			systemProgram: SYSTEM_PROGRAM_ID,
+		})
+		.instruction();
+
+	return await buildTransaction(creator, [ix]);
+};
+
+export const withdrawPlatformFees = async (admin: PublicKey) => {
+	const ix = await program.methods
+		.withdrawPlatformFees()
 		.accountsStrict({
 			admin,
-			marketConfig,
-			marketState,
+			platformConfig: PLATFORM_CONFIG,
+			platformTreasury: PLATFORM_TREASURY,
+			rent: RENT_SYSVAR_ACCOUNT,
+			systemProgram: SYSTEM_PROGRAM_ID,
+		})
+		.instruction();
+
+	return await buildTransaction(admin, [ix]);
+};
+
+export const updatePlatformConfig = async ({
+	admin,
+	creatorFeeBps,
+	platformFeeBps,
+	marketProposalFee,
+}: UpdatePlatformConfigParams) => {
+	const ix = await program.methods
+		.updatePlatformConfig(
+			creatorFeeBps ? creatorFeeBps : null,
+			platformFeeBps ? platformFeeBps : null,
+			marketProposalFee ? new anchor.BN(marketProposalFee) : null
+		)
+		.accountsStrict({
+			admin,
 			platformConfig: PLATFORM_CONFIG,
 			systemProgram: SYSTEM_PROGRAM_ID,
 		})

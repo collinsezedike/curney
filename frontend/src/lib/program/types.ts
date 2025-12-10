@@ -297,6 +297,188 @@ export type CurneyMarkets = {
 			args: [];
 		},
 		{
+			name: "dismissMarket";
+			discriminator: [138, 225, 164, 155, 53, 68, 6, 26];
+			accounts: [
+				{
+					name: "admin";
+					writable: true;
+					signer: true;
+				},
+				{
+					name: "creator";
+					writable: true;
+				},
+				{
+					name: "platformConfig";
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									112,
+									108,
+									97,
+									116,
+									102,
+									111,
+									114,
+									109,
+									45,
+									99,
+									111,
+									110,
+									102,
+									105,
+									103
+								];
+							},
+							{
+								kind: "account";
+								path: "admin";
+							}
+						];
+					};
+				},
+				{
+					name: "platformTreasury";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									112,
+									108,
+									97,
+									116,
+									102,
+									111,
+									114,
+									109,
+									45,
+									116,
+									114,
+									101,
+									97,
+									115,
+									117,
+									114,
+									121
+								];
+							},
+							{
+								kind: "account";
+								path: "platformConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "marketConfig";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									109,
+									97,
+									114,
+									107,
+									101,
+									116,
+									45,
+									99,
+									111,
+									110,
+									102,
+									105,
+									103
+								];
+							},
+							{
+								kind: "account";
+								path: "market_config.market_id";
+								account: "marketConfig";
+							},
+							{
+								kind: "account";
+								path: "platformConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "marketState";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									109,
+									97,
+									114,
+									107,
+									101,
+									116,
+									45,
+									115,
+									116,
+									97,
+									116,
+									101
+								];
+							},
+							{
+								kind: "account";
+								path: "marketConfig";
+							},
+							{
+								kind: "account";
+								path: "platformConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "marketVault";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									109,
+									97,
+									114,
+									107,
+									101,
+									116,
+									45,
+									118,
+									97,
+									117,
+									108,
+									116
+								];
+							},
+							{
+								kind: "account";
+								path: "marketConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "systemProgram";
+					address: "11111111111111111111111111111111";
+				}
+			];
+			args: [];
+		},
+		{
 			name: "initializePlatform";
 			discriminator: [119, 201, 101, 45, 75, 122, 89, 3];
 			accounts: [
@@ -1071,6 +1253,306 @@ export type CurneyMarkets = {
 					};
 				}
 			];
+		},
+		{
+			name: "updatePlatformConfig";
+			discriminator: [195, 60, 76, 129, 146, 45, 67, 143];
+			accounts: [
+				{
+					name: "admin";
+					writable: true;
+					signer: true;
+				},
+				{
+					name: "platformConfig";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									112,
+									108,
+									97,
+									116,
+									102,
+									111,
+									114,
+									109,
+									45,
+									99,
+									111,
+									110,
+									102,
+									105,
+									103
+								];
+							},
+							{
+								kind: "account";
+								path: "admin";
+							}
+						];
+					};
+				},
+				{
+					name: "systemProgram";
+					address: "11111111111111111111111111111111";
+				}
+			];
+			args: [
+				{
+					name: "creatorFeeBps";
+					type: {
+						option: "u16";
+					};
+				},
+				{
+					name: "platformFeeBps";
+					type: {
+						option: "u16";
+					};
+				},
+				{
+					name: "marketProposalFee";
+					type: {
+						option: "u64";
+					};
+				}
+			];
+		},
+		{
+			name: "withdrawCreatorRevenue";
+			discriminator: [17, 179, 212, 249, 155, 191, 74, 159];
+			accounts: [
+				{
+					name: "creator";
+					writable: true;
+					signer: true;
+				},
+				{
+					name: "platformConfig";
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									112,
+									108,
+									97,
+									116,
+									102,
+									111,
+									114,
+									109,
+									45,
+									99,
+									111,
+									110,
+									102,
+									105,
+									103
+								];
+							},
+							{
+								kind: "account";
+								path: "platform_config.admin";
+								account: "platformConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "marketConfig";
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									109,
+									97,
+									114,
+									107,
+									101,
+									116,
+									45,
+									99,
+									111,
+									110,
+									102,
+									105,
+									103
+								];
+							},
+							{
+								kind: "account";
+								path: "market_config.market_id";
+								account: "marketConfig";
+							},
+							{
+								kind: "account";
+								path: "platformConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "marketState";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									109,
+									97,
+									114,
+									107,
+									101,
+									116,
+									45,
+									115,
+									116,
+									97,
+									116,
+									101
+								];
+							},
+							{
+								kind: "account";
+								path: "marketConfig";
+							},
+							{
+								kind: "account";
+								path: "platformConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "marketVault";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									109,
+									97,
+									114,
+									107,
+									101,
+									116,
+									45,
+									118,
+									97,
+									117,
+									108,
+									116
+								];
+							},
+							{
+								kind: "account";
+								path: "marketConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "rent";
+					address: "SysvarRent111111111111111111111111111111111";
+				},
+				{
+					name: "systemProgram";
+					address: "11111111111111111111111111111111";
+				}
+			];
+			args: [];
+		},
+		{
+			name: "withdrawPlatformFees";
+			discriminator: [87, 24, 138, 122, 62, 146, 186, 199];
+			accounts: [
+				{
+					name: "admin";
+					writable: true;
+					signer: true;
+				},
+				{
+					name: "platformConfig";
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									112,
+									108,
+									97,
+									116,
+									102,
+									111,
+									114,
+									109,
+									45,
+									99,
+									111,
+									110,
+									102,
+									105,
+									103
+								];
+							},
+							{
+								kind: "account";
+								path: "admin";
+							}
+						];
+					};
+				},
+				{
+					name: "platformTreasury";
+					writable: true;
+					pda: {
+						seeds: [
+							{
+								kind: "const";
+								value: [
+									112,
+									108,
+									97,
+									116,
+									102,
+									111,
+									114,
+									109,
+									45,
+									116,
+									114,
+									101,
+									97,
+									115,
+									117,
+									114,
+									121
+								];
+							},
+							{
+								kind: "account";
+								path: "platformConfig";
+							}
+						];
+					};
+				},
+				{
+					name: "rent";
+					address: "SysvarRent111111111111111111111111111111111";
+				},
+				{
+					name: "systemProgram";
+					address: "11111111111111111111111111111111";
+				}
+			];
+			args: [];
 		}
 	];
 	accounts: [
@@ -1094,23 +1576,13 @@ export type CurneyMarkets = {
 	errors: [
 		{
 			code: 6000;
-			name: "invalidCreatorFeeBps";
-			msg: "Creator fee BPS must be <= 10,000";
+			name: "rewardAlreadyClaimed";
+			msg: "Position reward already claimed";
 		},
 		{
 			code: 6001;
-			name: "invalidPlatformFeeBps";
-			msg: "Platform fee BPS must be <= 10,000";
-		},
-		{
-			code: 6002;
-			name: "totalFeeTooHigh";
-			msg: "Total fee BPS must not exceed 10,000";
-		},
-		{
-			code: 6003;
-			name: "invalidMarketProposalFee";
-			msg: "Market proposal fee must be greater than zero";
+			name: "invalidDecay";
+			msg: "The decay factor must be greater than zero";
 		}
 	];
 	types: [
