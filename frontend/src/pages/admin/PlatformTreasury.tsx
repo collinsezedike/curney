@@ -4,9 +4,13 @@ import { Button } from "@radix-ui/themes";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
+import { useSolanaWallet } from "../../hooks/useSolanaWallet";
+import { withdrawPlatformFees } from "../../lib/program/instructions";
 import { formatCurrency } from "../../lib/helpers";
 
 const PlatformTreasury: React.FC = () => {
+	const { connection, signTransaction, userPublicKey } = useSolanaWallet();
+
 	const [balance, setBalance] = useState<number | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [withdrawing, setWithdrawing] = useState(false);
@@ -27,19 +31,31 @@ const PlatformTreasury: React.FC = () => {
 	}, []);
 
 	const handleWithdrawFees = async () => {
+		if (!userPublicKey || !signTransaction) return;
+
 		if (balance === null || balance <= 0) {
 			toast.info("No fees available to withdraw.");
 			return;
 		}
 
 		setWithdrawing(true);
+
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 300));
-			setBalance(0);
+			const tx = await withdrawPlatformFees(userPublicKey);
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize()
+			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
 			toast.success("Platform fees successfully withdrawn!");
 		} catch (error) {
-			console.error("Withdrawal failed:", error);
-			toast.error("Failed to withdraw fees. Check console for details.");
+			console.error("Failed to withdraw fees:", error);
+			toast.error("Failed to withdraw fees");
 		} finally {
 			setWithdrawing(false);
 		}

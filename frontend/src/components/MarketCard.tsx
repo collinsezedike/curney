@@ -12,8 +12,9 @@ interface UserContextData {
 	market: Market;
 	userPosition?: Position;
 	isCreator: boolean;
+	isTransactionPending: boolean;
 	panelType: "UnclaimedRewards" | "UnwithdrawnRevenue" | "History";
-	onClaimReward: (positionId: string) => void;
+	onClaimReward: (positionId: string, market: string) => void;
 	onWithdrawRevenue: (marketId: string) => void;
 }
 
@@ -50,9 +51,10 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 				<button
 					onClick={(e) => {
 						e.preventDefault();
-						onClaimReward!(userPosition.id);
+						onClaimReward!(userPosition.id, userPosition.market);
 					}}
-					className="bg-lime-500 hover:bg-lime-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+					disabled={userContextData.isTransactionPending}
+					className="bg-lime-500 hover:bg-lime-600 text-white px-4 py-3 rounded-md text-sm font-medium transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
 				>
 					Claim Reward
 				</button>
@@ -69,7 +71,8 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 						e.preventDefault();
 						onWithdrawRevenue!(currentMarket.id);
 					}}
-					className="bg-lime-500 hover:bg-lime-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+					disabled={userContextData.isTransactionPending}
+					className="bg-lime-500 hover:bg-lime-600 text-white px-4 py-3 rounded-md text-sm font-medium transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
 				>
 					Withdraw Revenue
 				</button>

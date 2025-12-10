@@ -143,13 +143,13 @@ export const approveMarket = async (marketId: string, admin: PublicKey) => {
 };
 
 export const dismissMarket = async (
-	marketConfig: string,
+	marketId: string,
 	creator: string,
 	admin: PublicKey
 ) => {
-	const marketConfigPubkey = new PublicKey(marketConfig);
-	const marketState = getMarketStatePDA(marketConfigPubkey);
-	const marketVault = getMarketVaultPDA(marketConfigPubkey);
+	const marketConfig = getMarketConfigPDA(marketId);
+	const marketState = getMarketStatePDA(marketConfig);
+	const marketVault = getMarketVaultPDA(marketConfig);
 	const creatorPubkey = new PublicKey(creator);
 
 	const ix = await program.methods
@@ -157,7 +157,7 @@ export const dismissMarket = async (
 		.accountsStrict({
 			admin,
 			creator: creatorPubkey,
-			marketConfig: marketConfigPubkey,
+			marketConfig,
 			marketState,
 			marketVault,
 			platformConfig: PLATFORM_CONFIG,
@@ -255,18 +255,18 @@ export const claimReward = async (
 };
 
 export const withdrawCreatorRevenue = async (
-	marketConfig: string,
+	marketId: string,
 	creator: PublicKey
 ) => {
-	const marketConfigPubkey = new PublicKey(marketConfig);
-	const marketState = getMarketStatePDA(marketConfigPubkey);
-	const marketVault = getMarketVaultPDA(marketConfigPubkey);
+	const marketConfig = getMarketConfigPDA(marketId);
+	const marketState = getMarketStatePDA(marketConfig);
+	const marketVault = getMarketVaultPDA(marketConfig);
 
 	const ix = await program.methods
 		.withdrawCreatorRevenue()
 		.accountsStrict({
 			creator,
-			marketConfig: marketConfigPubkey,
+			marketConfig,
 			marketState,
 			marketVault,
 			platformConfig: PLATFORM_CONFIG,

@@ -7,6 +7,10 @@ import MarketCard from "../components/MarketCard";
 import type { Position, Market } from "../lib/types";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, truncateAddress } from "../lib/helpers";
+import {
+	claimReward,
+	withdrawCreatorRevenue,
+} from "../lib/program/instructions";
 
 const mockResolvedMarketsData: Market[] = [
 	{
@@ -182,57 +186,68 @@ interface UserMarketData {
 }
 
 const Profile: React.FC = () => {
-	const { isConnected, connect, userPublicKey } = useSolanaWallet();
+	const { connect, connection, isConnected, signTransaction, userPublicKey } =
+		useSolanaWallet();
 	const [allUserPositions, setAllUserPositions] = useState<Position[]>([]);
 	const [allMarkets, setAllMarkets] = useState<Market[]>(mockAllMarkets);
 	const [loading, setLoading] = useState(true);
+	const [isClaiming, setIsClaiming] = useState(false);
+	const [isWithdrawing, setIsWithdrawing] = useState(false);
 
 	const userId = "MockUserPublicKey";
 
-	const handleClaimReward = async (positionId: string) => {
-		try {
-			await new Promise((resolve) => setTimeout(resolve, 500));
-			const positionToClaim = allUserPositions.find(
-				(p) => p.id === positionId
-			);
-			const reward = positionToClaim?.reward || 0;
+	const isTransactionPending = isClaiming || isWithdrawing;
 
-			if (reward > 0) {
-				setAllUserPositions((prev) =>
-					prev.map((prediction) =>
-						prediction.id === positionId
-							? { ...prediction, claimed: true }
-							: prediction
-					)
-				);
-				toast.success(`Claimed ${formatCurrency(reward)}!`);
-			} else {
-				toast.error("No reward to claim or claim failed.");
-			}
+	const handleClaimReward = async (position: string, market: string) => {
+		if (!userPublicKey || !signTransaction || isTransactionPending) return;
+
+		setIsClaiming(true);
+
+		try {
+			const tx = await claimReward(market, position, userPublicKey);
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize()
+			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
+
+			toast.success(`Claimed reward successfully!`);
 		} catch (error) {
 			console.error("Failed to claim reward:", error);
 			toast.error("Failed to claim reward");
+		} finally {
+			setIsClaiming(false);
 		}
 	};
 
 	const handleWithdrawRevenue = async (marketId: string) => {
+		if (!userPublicKey || !signTransaction || isTransactionPending) return;
+
+		setIsWithdrawing(true);
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 500));
-			const marketToClaim = allMarkets.find((m) => m.id === marketId);
-			const mockRevenue = (marketToClaim?.totalPool || 0) * 0.05;
-
-			setAllMarkets((prev) =>
-				prev.map((m) =>
-					m.id === marketId ? { ...m, creatorFeeRevenue: 0 } : m
-				)
+			const tx = await withdrawCreatorRevenue(marketId, userPublicKey);
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize()
 			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
 
-			toast.success(
-				`Creator revenue withdrawn: ${formatCurrency(mockRevenue)}!`
-			);
+			toast.success(`Creator revenue withdrawn successfully!`);
 		} catch (error) {
 			console.error("Failed to withdraw revenue:", error);
 			toast.error("Failed to withdraw revenue");
+		} finally {
+			setIsWithdrawing(false);
 		}
 	};
 
@@ -418,7 +433,7 @@ const Profile: React.FC = () => {
 								</div>
 								<div className="md:text-center">
 									<span className="text-gray-500 text-sm">
-										Action Required Markets
+										Pending Settlements
 									</span>
 									<div className="font-semibold text-lg">
 										{unclaimedPositionRewards.length +
@@ -428,7 +443,7 @@ const Profile: React.FC = () => {
 							</div>
 						</div>
 
-						<div className="rounded-lg p-6 shadow-md">
+						<div className="bg-white rounded-lg p-6 shadow-md">
 							<h3 className="text-xl font-bold mb-4 flex items-center">
 								Active Positions (
 								{unclaimedPositionRewards.length})
@@ -459,6 +474,7 @@ const Profile: React.FC = () => {
 												isCreator: data.isCreator,
 												panelType: "UnclaimedRewards",
 												userPosition: data.userPosition,
+												isTransactionPending,
 												onWithdrawRevenue:
 													handleWithdrawRevenue,
 												onClaimReward:
@@ -506,6 +522,7 @@ const Profile: React.FC = () => {
 												isCreator: data.isCreator,
 												panelType: "UnwithdrawnRevenue",
 												userPosition: data.userPosition,
+												isTransactionPending,
 												onWithdrawRevenue:
 													handleWithdrawRevenue,
 												onClaimReward:
@@ -553,6 +570,7 @@ const Profile: React.FC = () => {
 												isCreator: data.isCreator,
 												panelType: "History",
 												userPosition: data.userPosition,
+												isTransactionPending,
 												onWithdrawRevenue:
 													handleWithdrawRevenue,
 												onClaimReward:

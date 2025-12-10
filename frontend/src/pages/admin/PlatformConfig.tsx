@@ -7,8 +7,10 @@ import { Button } from "@radix-ui/themes";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
+import { useSolanaWallet } from "../../hooks/useSolanaWallet";
 import type { PlatformConfig as PlatformConfigType } from "../../lib/types";
 import { mockApi } from "../../lib/mockApi";
+import { updatePlatformConfig } from "../../lib/program/instructions";
 
 const configSchema = z.object({
 	platformFeeBps: z.number().min(0).max(10),
@@ -19,6 +21,8 @@ const configSchema = z.object({
 type ConfigFormData = z.infer<typeof configSchema>;
 
 const PlatformConfig: React.FC = () => {
+	const { connection, signTransaction, userPublicKey } = useSolanaWallet();
+
 	const [config, setConfig] = useState<PlatformConfigType | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [updating, setUpdating] = useState(false);
@@ -27,7 +31,7 @@ const PlatformConfig: React.FC = () => {
 		register,
 		handleSubmit,
 		reset,
-		formState: { errors },
+		formState: { errors, dirtyFields },
 	} = useForm<ConfigFormData>({
 		resolver: zodResolver(configSchema),
 	});
@@ -53,11 +57,37 @@ const PlatformConfig: React.FC = () => {
 		loadConfig();
 	}, [reset]);
 
-	const handleUpdatePlatformConfig = async (data: ConfigFormData) => {
+	const handleUpdatePlatformConfig = async (formData: ConfigFormData) => {
+		if (!userPublicKey || !signTransaction) return;
+
 		setUpdating(true);
+
+		const filteredData: Partial<ConfigFormData> = {};
+
+		(Object.keys(formData) as Array<keyof ConfigFormData>).forEach(
+			(key) => {
+				if (dirtyFields[key]) filteredData[key] = formData[key] as any;
+				else filteredData[key] = undefined;
+			}
+		);
+
 		try {
-			const updatedConfig = await mockApi.updatePlatformConfig(data);
-			setConfig(updatedConfig);
+			const tx = await updatePlatformConfig({
+				admin: userPublicKey,
+				platformFeeBps: formData.platformFeeBps,
+				creatorFeeBps: formData.creatorFeeBps,
+				marketProposalFee: formData.marketProposalFee,
+			});
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize()
+			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
 			toast.success("Platform configuration updated successfully!");
 		} catch (error) {
 			console.error("Failed to update config:", error);
@@ -66,6 +96,8 @@ const PlatformConfig: React.FC = () => {
 			setUpdating(false);
 		}
 	};
+
+	const isDirty = Object.keys(dirtyFields).length > 0;
 
 	if (loading) {
 		return (
@@ -216,7 +248,7 @@ const PlatformConfig: React.FC = () => {
 
 							<Button
 								type="submit"
-								disabled={updating}
+								disabled={updating || !isDirty}
 								className="cursor-pointer w-full bg-lime-500 hover:bg-lime-600 text-white py-6 px-6 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
 							>
 								{updating

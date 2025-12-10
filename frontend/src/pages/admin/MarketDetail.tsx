@@ -15,6 +15,7 @@ import { ResolveMarketFormSchema } from "../../lib/types";
 import type { Market, MarketFormData, ResolveFormData } from "../../lib/types";
 import {
 	approveMarket,
+	dismissMarket,
 	resolveMarket,
 	updateMarketConfig,
 } from "../../lib/program/instructions";
@@ -160,11 +161,23 @@ const AdminMarketDetail: React.FC = () => {
 	};
 
 	const handleDismissMarket = async () => {
-		if (!userPublicKey || !signTransaction) return;
+		if (!userPublicKey || !signTransaction || !market) return;
 
 		setDismissing(true);
 
 		try {
+			const tx = await dismissMarket(id, market.creator, userPublicKey);
+			const signedTx = await signTransaction(tx);
+			const signature = await connection.sendRawTransaction(
+				signedTx.serialize()
+			);
+			const latestBlockhash = await connection.getLatestBlockhash();
+			await connection.confirmTransaction({
+				blockhash: latestBlockhash.blockhash,
+				lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+				signature: signature,
+			});
+			toast.success("Market dismissed successfully!");
 		} catch (error) {
 			console.error("Failed to dismiss market:", error);
 			toast.error("Failed to dismiss market");
@@ -304,7 +317,7 @@ const AdminMarketDetail: React.FC = () => {
 										disabled={
 											updating || approving || dismissing
 										}
-										className="flex-1 bg-lime-100 hover:bg-lime-200 text-lime-900 px-8 py-7 text-lg cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
+										className="flex-1 bg-lime-100 hover:bg-lime-200 text-lime-900 px-8 py-7 text-lg cursor-pointer disabled:bg-gray-400 disabled:text-white disabled:cursor-not-allowed disabled:opacity-80"
 									>
 										{dismissing
 											? "Dismissing..."
