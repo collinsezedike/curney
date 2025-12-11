@@ -1,30 +1,75 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import { Button } from "@radix-ui/themes";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import MarketList from "../components/MarketList";
-import type { Market } from "../lib/types";
-import { mockApi } from "../lib/mockApi";
+import { fetchAllApprovedMarketAccounts } from "../lib/program/utils";
+import { convertTimestamp } from "../lib/helpers";
+import { useTimeSync } from "../context/TimeSyncProvider";
 
 const Home: React.FC = () => {
-	const [markets, setMarkets] = useState<Market[]>([]);
+	const { timeOffsetMs } = useTimeSync();
+
+	const [markets, setMarkets] = useState<
+		Awaited<ReturnType<typeof fetchAllApprovedMarketAccounts>>
+	>([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
 		const loadMarkets = async () => {
 			try {
-				const data = await mockApi.getMarkets();
-				setMarkets(data.filter((m) => m.isApproved && !m.isResolved));
+				const data = await fetchAllApprovedMarketAccounts();
+				setMarkets(data);
 			} catch (error) {
 				console.error("Failed to load markets:", error);
+				toast.error("Failed to load markets");
 			} finally {
 				setLoading(false);
 			}
 		};
 
 		loadMarkets();
-	}, []);
+	}, [markets]);
+
+	const upComingMarkets = markets?.filter(
+		(m) =>
+			new Date() <
+				new Date(
+					convertTimestamp(
+						m.config.startTime.toNumber(),
+						timeOffsetMs
+					)
+				) &&
+			new Date() <
+				new Date(
+					convertTimestamp(m.config.endTime.toNumber(), timeOffsetMs)
+				)
+	);
+
+	const activeMarkets = markets?.filter(
+		(m) =>
+			new Date() >=
+				new Date(
+					convertTimestamp(
+						m.config.startTime.toNumber(),
+						timeOffsetMs
+					)
+				) &&
+			new Date() <
+				new Date(
+					convertTimestamp(m.config.endTime.toNumber(), timeOffsetMs)
+				)
+	);
+	const unresolvedMarkets = markets?.filter(
+		(m) =>
+			new Date() >
+				new Date(
+					convertTimestamp(m.config.endTime.toNumber(), timeOffsetMs)
+				) && !m.state.isResolved
+	);
+	const resolvedMarkets = markets?.filter((m) => m.state.isResolved);
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -78,10 +123,24 @@ const Home: React.FC = () => {
 								</p>
 							</div>
 						) : (
-							<MarketList
-								markets={markets}
-								title="Active Markets"
-							/>
+							<>
+								<MarketList
+									markets={upComingMarkets}
+									title="Upcoming Markets"
+								/>
+								<MarketList
+									markets={activeMarkets}
+									title="Active Markets"
+								/>
+								<MarketList
+									markets={unresolvedMarkets}
+									title="Unresolved Markets"
+								/>
+								<MarketList
+									markets={resolvedMarkets}
+									title="Markets History"
+								/>
+							</>
 						)}
 					</div>
 				</section>

@@ -7,19 +7,27 @@ import PredictionForm from "../components/PredictionForm";
 import PayoutGraph from "../components/PayoutGraph";
 import Timer from "../components/Timer";
 import WalletGate from "../components/WalletGate";
-import type { Market as MarketType, Position } from "../lib/types";
-import { mockApi } from "../lib/mockApi";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
-import { formatCurrency, formatDate } from "../lib/helpers";
+import { convertTimestamp, formatCurrency, formatDate } from "../lib/helpers";
 import { placePrediction } from "../lib/program/instructions";
 import PredictionSpreadGraph from "../components/PredictionSpreadGraph";
+import {
+	fetchAllUserPositionAccountsByMarket,
+	fetchMarketAccount,
+} from "../lib/program/utils";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useTimeSync } from "../context/TimeSyncProvider";
 
 const Market: React.FC = () => {
 	const { id } = useParams<{ id: string }>();
+	const { timeOffsetMs } = useTimeSync();
 	const { connect, connection, isConnected, signTransaction, userPublicKey } =
 		useSolanaWallet();
-	const [market, setMarket] = useState<MarketType | null>(null);
-	const [userPredictions, setUserPredictions] = useState<Position[]>([]);
+	const [market, setMarket] =
+		useState<Awaited<ReturnType<typeof fetchMarketAccount>>>(null);
+	const [userPredictions, setUserPredictions] = useState<
+		Awaited<ReturnType<typeof fetchAllUserPositionAccountsByMarket>>
+	>([]);
 	const [loading, setLoading] = useState(true);
 	const [placing, setPlacing] = useState(false);
 
@@ -27,16 +35,15 @@ const Market: React.FC = () => {
 		const loadMarket = async () => {
 			if (!id) return;
 			try {
-				const marketData = await mockApi.getMarket(id);
-				setMarket(marketData);
+				setMarket(await fetchMarketAccount(id));
 
 				if (userPublicKey) {
-					const predictions = await mockApi.getUserBets(
-						userPublicKey.toBase58()
-					);
-					setUserPredictions(
-						predictions.filter((b) => b.market === id)
-					);
+					const predictions =
+						await fetchAllUserPositionAccountsByMarket(
+							userPublicKey.toBase58(),
+							id
+						);
+					setUserPredictions(predictions);
 				}
 			} catch (error) {
 				console.error("Failed to load market:", error);
@@ -59,10 +66,10 @@ const Market: React.FC = () => {
 
 		try {
 			const tx = await placePrediction(
-				market.id,
+				market.state.marketConfig.toBase58(),
 				data.prediction,
 				data.stake,
-				market.totalPositions,
+				market.state.totalPositions.toNumber(),
 				userPublicKey
 			);
 			const signedTx = await signTransaction(tx);
@@ -117,7 +124,19 @@ const Market: React.FC = () => {
 		);
 	}
 
-	const canBet = market.isApproved && new Date() < new Date(market.endTime);
+	const canBet =
+		market.state.isApproved &&
+		new Date() >=
+			new Date(
+				convertTimestamp(
+					market.config.startTime.toNumber(),
+					timeOffsetMs
+				)
+			) &&
+		new Date() <
+			new Date(
+				convertTimestamp(market.config.endTime.toNumber(), timeOffsetMs)
+			);
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -125,48 +144,127 @@ const Market: React.FC = () => {
 
 			<main className="max-w-7xl mx-auto px-4 py-10">
 				<h1 className="text-3xl font-semibold text-gray-900 mb-2 leading-tight">
-					{market.question}
+					{market.config.question}
 				</h1>
 
 				<div className="flex items-center gap-3 text-gray-500 text-sm mb-10">
-					<span className="capitalize">{market.category}</span>
+					{new Date() <
+					new Date(
+						convertTimestamp(
+							market.config.startTime.toNumber(),
+							timeOffsetMs
+						)
+					) ? (
+						<span>
+							Starts:{" "}
+							<Timer
+								endTime={
+									new Date(
+										convertTimestamp(
+											market.config.startTime.toNumber(),
+											timeOffsetMs
+										)
+									)
+								}
+								className="text-lg"
+							/>
+						</span>
+					) : (
+						<span>
+							Ends:{" "}
+							<Timer
+								endTime={
+									new Date(
+										convertTimestamp(
+											market.config.endTime.toNumber(),
+											timeOffsetMs
+										)
+									)
+								}
+								className="text-lg"
+							/>
+						</span>
+					)}
 					<span>•</span>
-					<span>
-						Ends:{" "}
-						<Timer
-							endTime={new Date(market.endTime)}
-							className="text-lg"
-						/>
-					</span>
 					<span
 						className={`flex capitalize items-center gap-1 ${
-							market.isResolved
+							market.state.isResolved
 								? "text-red-400"
-								: market.isApproved
+								: new Date() <
+										new Date(
+											convertTimestamp(
+												market.config.endTime.toNumber(),
+												timeOffsetMs
+											)
+										) &&
+								  new Date() >=
+										new Date(
+											convertTimestamp(
+												market.config.startTime.toNumber(),
+												timeOffsetMs
+											)
+										) &&
+								  market.state.isApproved
 								? "text-green-400"
 								: "text-amber-400"
 						}`}
 					>
 						<span
 							className={`w-2 h-2 rounded-full ${
-								market.isResolved
+								market.state.isResolved
 									? "bg-red-400"
-									: market.isApproved
+									: new Date() <
+											new Date(
+												convertTimestamp(
+													market.config.endTime.toNumber(),
+													timeOffsetMs
+												)
+											) &&
+									  new Date() >=
+											new Date(
+												convertTimestamp(
+													market.config.startTime.toNumber(),
+													timeOffsetMs
+												)
+											) &&
+									  market.state.isApproved
 									? "bg-green-400"
 									: "bg-amber-400"
 							}`}
 						></span>
-						{market.isResolved
+						{market.state.isResolved
 							? "Resolved"
-							: market.isApproved
+							: new Date() <
+									new Date(
+										convertTimestamp(
+											market.config.endTime.toNumber(),
+											timeOffsetMs
+										)
+									) &&
+							  new Date() >=
+									new Date(
+										convertTimestamp(
+											market.config.startTime.toNumber(),
+											timeOffsetMs
+										)
+									) &&
+							  market.state.isApproved
 							? "Live"
-							: "Pending"}
+							: new Date() <=
+							  new Date(
+									convertTimestamp(
+										market.config.startTime.toNumber(),
+										timeOffsetMs
+									)
+							  )
+							? "Yet to Start"
+							: "Pending Resolution"}
 					</span>
 				</div>
 
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
 					<div className="lg:col-span-2 space-y-10 order-1 lg:order-1">
-						{market.isResolved && (
+						{market.state.isResolved && (
 							<PayoutGraph className="w-full" />
 						)}
 
@@ -175,41 +273,47 @@ const Market: React.FC = () => {
 						/>
 
 						<div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
-							<div className="grid grid-cols-3 gap-6 text-sm">
+							<div className="grid grid-cols-4 gap-6 text-sm md:text-center">
 								<div>
 									<p className="text-gray-500">Pool</p>
 									<p className="text-gray-900 font-medium">
-										{formatCurrency(market.totalPool)}
+										{formatCurrency(
+											market.state.totalPool.toNumber() /
+												LAMPORTS_PER_SOL
+										)}
 									</p>
 								</div>
 								<div>
 									<p className="text-gray-500">Predictions</p>
 									<p className="text-gray-900 font-medium">
-										{market.totalPositions}
+										{market.state.totalPositions.toNumber()}
 									</p>
 								</div>
 								<div>
 									<p className="text-gray-500">End Time</p>
 									<p className="text-gray-900 font-medium">
-										{formatDate(market.endTime)}
+										{formatDate(
+											convertTimestamp(
+												market.config.endTime.toNumber(),
+												timeOffsetMs
+											)
+										)}
+									</p>
+								</div>
+								<div>
+									<p>Resolution</p>
+									<p
+										className={`font-medium ${
+											market.state.isResolved
+												? "text-lime-500"
+												: "text-amber-500"
+										}`}
+									>
+										{market.state.resolution?.toNumber() ||
+											"Pending"}
 									</p>
 								</div>
 							</div>
-
-							{market.isResolved &&
-								market.resolution !== undefined && (
-									<div className="mt-6 p-4 bg-blue-50 rounded-lg">
-										<h3 className="font-medium text-blue-900 mb-1">
-											Final Result
-										</h3>
-										<p className="text-blue-800">
-											Final value:{" "}
-											<span className="font-bold">
-												{market.resolution}
-											</span>
-										</p>
-									</div>
-								)}
 						</div>
 
 						{userPredictions.length > 0 && (
@@ -221,33 +325,35 @@ const Market: React.FC = () => {
 								<div className="divide-y divide-gray-100">
 									{userPredictions.map((prediction) => (
 										<div
-											key={prediction.id}
+											key={prediction.publicKey.toBase58()}
 											className="py-3 flex justify-between"
 										>
 											<div>
 												<p className="font-medium">
-													{prediction.prediction}
+													{prediction.account.prediction.toNumber()}
 												</p>
 												<p className="text-sm text-gray-500">
 													Stake:{" "}
 													{formatCurrency(
-														prediction.stake
+														prediction.account.stake.toNumber() /
+															LAMPORTS_PER_SOL
 													)}{" "}
 													•{" "}
 													{formatDate(
-														prediction.timestamp
+														prediction.account.timestamp.toNumber()
 													)}
 												</p>
 											</div>
 
-											{prediction.reward && (
+											{prediction.account.reward && (
 												<div className="text-right">
 													<p className="font-medium text-lime-600">
 														{formatCurrency(
-															prediction.reward
+															prediction.account.reward?.toNumber()
 														)}
 													</p>
-													{!prediction.claimed && (
+													{!prediction.account
+														.claimed && (
 														<button className="text-sm text-lime-600 hover:text-lime-700">
 															Claim
 														</button>
@@ -269,7 +375,6 @@ const Market: React.FC = () => {
 									onConnect={connect}
 								>
 									<PredictionForm
-										market={market}
 										onSubmit={handlePlacePrediction}
 										isLoading={placing}
 									/>
@@ -277,14 +382,30 @@ const Market: React.FC = () => {
 							) : (
 								<div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
 									<h3 className="text-lg font-semibold text-gray-900 mb-2">
-										{market.isResolved
+										{market.state.isResolved
 											? "Market Resolved"
-											: "Betting Closed"}
+											: new Date() >=
+											  new Date(
+													convertTimestamp(
+														market.config.startTime.toNumber(),
+														timeOffsetMs
+													)
+											  )
+											? "Market Closed"
+											: "Market Not Started"}
 									</h3>
 									<p className="text-gray-600">
-										{market.isResolved
+										{market.state.isResolved
 											? "This market has been resolved. Check your profile for rewards."
-											: "Betting is no longer available for this market."}
+											: new Date() >=
+											  new Date(
+													convertTimestamp(
+														market.config.startTime.toNumber(),
+														timeOffsetMs
+													)
+											  )
+											? "Market is no longer open for predictions"
+											: "Market will open once the start time is reached"}
 									</p>
 								</div>
 							)}
@@ -297,7 +418,7 @@ const Market: React.FC = () => {
 								Rules
 							</h3>
 							<p className="text-gray-700 leading-relaxed">
-								{market.description}
+								{market.config.description}
 							</p>
 						</div>
 					</div>

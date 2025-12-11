@@ -8,24 +8,36 @@ import WalletGate from "../components/WalletGate";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { proposeMarket } from "../lib/program/instructions";
 import type { MarketFormData } from "../lib/types";
+import { convertTimestamp } from "../lib/helpers";
+import { useTimeSync } from "../context/TimeSyncProvider";
+import { date } from "zod";
 
 const ProposeMarket: React.FC = () => {
 	const navigate = useNavigate();
+	const { timeOffsetMs } = useTimeSync();
 	const { connect, connection, isConnected, signTransaction, userPublicKey } =
 		useSolanaWallet();
-	const [creating, setCreating] = useState(false);
+	const [proposing, setProposing] = useState(false);
 
 	const handleSubmit = async (data: MarketFormData) => {
 		if (!userPublicKey || !signTransaction) return;
 
-		setCreating(true);
+		setProposing(true);
 
 		try {
 			const tx = await proposeMarket(
 				data.question,
 				data.description,
-				new Date(data.startTime).getTime(),
-				new Date(data.endTime).getTime(),
+				convertTimestamp(
+					new Date(`${data.startTime}:00.000Z`).getTime(),
+					timeOffsetMs,
+					"toChain"
+				),
+				convertTimestamp(
+					new Date(data.endTime).getTime(),
+					timeOffsetMs,
+					"toChain"
+				),
 				data.minPredictionPrice,
 				userPublicKey
 			);
@@ -48,7 +60,7 @@ const ProposeMarket: React.FC = () => {
 			console.error("Failed to submit market proposal:", error);
 			toast.error("Failed to submit market proposal");
 		} finally {
-			setCreating(false);
+			setProposing(false);
 		}
 	};
 
@@ -71,7 +83,7 @@ const ProposeMarket: React.FC = () => {
 					<WalletGate isConnected={isConnected} onConnect={connect}>
 						<MarketForm
 							onSubmit={handleSubmit}
-							isLoading={creating}
+							isLoading={proposing}
 						/>
 					</WalletGate>
 				</div>

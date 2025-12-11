@@ -1,22 +1,5 @@
 import { z } from "zod";
 
-export interface Market {
-	creator: string;
-	id: string;
-	category: string;
-	question: string;
-	description: string;
-	endTime: number;
-	startTime: number;
-	isApproved: boolean;
-	isResolved: boolean;
-	totalPool: number;
-	totalPositions: number;
-	minPredictionPrice: number;
-	creatorFeeRevenue: number;
-	resolution?: number;
-	totalScores?: number;
-}
 export interface Position {
 	id: string;
 	market: string;
@@ -28,13 +11,6 @@ export interface Position {
 	reward?: number;
 }
 
-export interface PlatformConfig {
-	platformFeeBps: number;
-	creatorFeeBps: number;
-	marketProposalFee: number;
-	admin: string;
-}
-
 // Zod types
 
 export const MarketFormSchema = z.object({
@@ -42,7 +18,6 @@ export const MarketFormSchema = z.object({
 	description: z
 		.string()
 		.min(20, "Description must be at least 20 characters"),
-	category: z.string().min(1, "Category is required"),
 	minPredictionPrice: z
 		.number()
 		.min(0.01, "Minimum prediction price is required"),

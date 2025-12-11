@@ -25,7 +25,7 @@ const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
 
 const RENT_SYSVAR_ACCOUNT = anchor.web3.SYSVAR_RENT_PUBKEY;
 interface UpdateMarketConfigParams {
-	marketId: string;
+	marketConfig: string;
 	admin: PublicKey;
 	startTime?: number;
 	endTime?: number;
@@ -91,7 +91,7 @@ export const proposeMarket = async (
 };
 
 export const updateMarketConfig = async ({
-	marketId,
+	marketConfig,
 	admin,
 	startTime,
 	endTime,
@@ -99,8 +99,8 @@ export const updateMarketConfig = async ({
 	question,
 	description,
 }: UpdateMarketConfigParams) => {
-	const marketConfig = getMarketConfigPDA(marketId);
-	const marketState = getMarketStatePDA(marketConfig);
+	const marketConfigPubKey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubKey);
 
 	const ix = await program.methods
 		.updateMarketConfig(
@@ -114,7 +114,7 @@ export const updateMarketConfig = async ({
 		)
 		.accountsStrict({
 			admin,
-			marketConfig,
+			marketConfig: marketConfigPubKey,
 			marketState,
 			platformConfig: PLATFORM_CONFIG,
 			systemProgram: SYSTEM_PROGRAM_ID,
@@ -124,15 +124,15 @@ export const updateMarketConfig = async ({
 	return await buildTransaction(admin, [ix]);
 };
 
-export const approveMarket = async (marketId: string, admin: PublicKey) => {
-	const marketConfig = getMarketConfigPDA(marketId);
-	const marketState = getMarketStatePDA(marketConfig);
+export const approveMarket = async (marketConfig: string, admin: PublicKey) => {
+	const marketConfigPubKey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubKey);
 
 	const ix = await program.methods
 		.approveMarket()
 		.accountsStrict({
 			admin,
-			marketConfig,
+			marketConfig: marketConfigPubKey,
 			marketState,
 			platformConfig: PLATFORM_CONFIG,
 			systemProgram: SYSTEM_PROGRAM_ID,
@@ -143,13 +143,13 @@ export const approveMarket = async (marketId: string, admin: PublicKey) => {
 };
 
 export const dismissMarket = async (
-	marketId: string,
+	marketConfig: string,
 	creator: string,
 	admin: PublicKey
 ) => {
-	const marketConfig = getMarketConfigPDA(marketId);
-	const marketState = getMarketStatePDA(marketConfig);
-	const marketVault = getMarketVaultPDA(marketConfig);
+	const marketConfigPubKey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubKey);
+	const marketVault = getMarketVaultPDA(marketConfigPubKey);
 	const creatorPubkey = new PublicKey(creator);
 
 	const ix = await program.methods
@@ -157,7 +157,7 @@ export const dismissMarket = async (
 		.accountsStrict({
 			admin,
 			creator: creatorPubkey,
-			marketConfig,
+			marketConfig: marketConfigPubKey,
 			marketState,
 			marketVault,
 			platformConfig: PLATFORM_CONFIG,
@@ -197,16 +197,16 @@ export const resolveMarket = async (
 };
 
 export const placePrediction = async (
-	marketId: string,
+	marketConfig: string,
 	prediction: number,
 	stakeAmount: number,
 	currentIndex: number,
 	user: PublicKey
 ) => {
-	const marketConfig = getMarketConfigPDA(marketId);
-	const marketState = getMarketStatePDA(marketConfig);
-	const marketVault = getMarketVaultPDA(marketConfig);
-	const position = getPositionPDA(currentIndex, marketConfig, user);
+	const marketConfigPubKey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubKey);
+	const marketVault = getMarketVaultPDA(marketConfigPubKey);
+	const position = getPositionPDA(currentIndex, marketConfigPubKey, user);
 
 	const ix = await program.methods
 		.placePrediction(
@@ -216,7 +216,7 @@ export const placePrediction = async (
 		.accountsStrict({
 			user,
 			position,
-			marketConfig,
+			marketConfig: marketConfigPubKey,
 			marketState,
 			marketVault,
 			platformConfig: PLATFORM_CONFIG,
@@ -229,14 +229,14 @@ export const placePrediction = async (
 };
 
 export const claimReward = async (
+	positionId: number,
 	marketConfig: string,
-	position: string,
 	user: PublicKey
 ) => {
 	const marketConfigPubkey = new PublicKey(marketConfig);
 	const marketState = getMarketStatePDA(marketConfigPubkey);
 	const marketVault = getMarketVaultPDA(marketConfigPubkey);
-	const positionPubkey = new PublicKey(position);
+	const positionPubkey = getPositionPDA(positionId, marketConfigPubkey, user);
 
 	const ix = await program.methods
 		.claimReward()
@@ -255,18 +255,18 @@ export const claimReward = async (
 };
 
 export const withdrawCreatorRevenue = async (
-	marketId: string,
+	marketConfig: string,
 	creator: PublicKey
 ) => {
-	const marketConfig = getMarketConfigPDA(marketId);
-	const marketState = getMarketStatePDA(marketConfig);
-	const marketVault = getMarketVaultPDA(marketConfig);
+	const marketConfigPubKey = new PublicKey(marketConfig);
+	const marketState = getMarketStatePDA(marketConfigPubKey);
+	const marketVault = getMarketVaultPDA(marketConfigPubKey);
 
 	const ix = await program.methods
 		.withdrawCreatorRevenue()
 		.accountsStrict({
 			creator,
-			marketConfig,
+			marketConfig: marketConfigPubKey,
 			marketState,
 			marketVault,
 			platformConfig: PLATFORM_CONFIG,

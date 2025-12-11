@@ -4,207 +4,51 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import WalletGate from "../components/WalletGate";
 import MarketCard from "../components/MarketCard";
-import type { Position, Market } from "../lib/types";
 import { useSolanaWallet } from "../hooks/useSolanaWallet";
 import { formatCurrency, truncateAddress } from "../lib/helpers";
 import {
 	claimReward,
 	withdrawCreatorRevenue,
 } from "../lib/program/instructions";
+import {
+	fetchAllMarketAccounts,
+	fetchAllUserPositionAccounts,
+	fetchPositionAccount,
+	fetchMarketAccount,
+} from "../lib/program/utils";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
-const mockResolvedMarketsData: Market[] = [
-	{
-		id: "resolved-1",
-		question: "Will Bitcoin hit $100k by year-end 2024?",
-		creator: "9X7e5fGhI1JkL2mN3oP4qR5sT6uV7wX8yZ0",
-		isApproved: true,
-		isResolved: true,
-		resolution: 123,
-		totalPool: 1000,
-		totalPositions: 50,
-		endTime: Date.now() - 86400000,
-		startTime: Date.now() - 86400000,
-		category: "Sports",
-		creatorFeeRevenue: 10000,
-		description: "Market Description",
-		minPredictionPrice: 10000,
-		totalScores: 99999999,
-	},
-
-	{
-		id: "resolved-2",
-		question: "Will the Solana price double in Q3?",
-		creator: "NotMockUserPublicKey",
-		isApproved: true,
-		isResolved: true,
-		totalPool: 5000,
-		totalPositions: 100,
-		resolution: 100,
-		endTime: Date.now() - 172800000,
-		startTime: Date.now() - 86400000,
-		category: "Sports",
-		creatorFeeRevenue: 500,
-		description: "Market Description",
-		minPredictionPrice: 10000,
-		totalScores: 9999999,
-	},
-
-	{
-		id: "resolved-3",
-		question: "Will the Ethereum price double in Q3?",
-		creator: "MockUserPublicKey",
-		isApproved: true,
-		isResolved: false,
-		totalPool: 5000,
-		totalPositions: 100,
-		endTime: Date.now() - 172800000,
-		startTime: Date.now() - 86400000,
-		category: "Sports",
-		creatorFeeRevenue: 500,
-		description: "Market Description",
-		minPredictionPrice: 10000,
-	},
-
-	{
-		id: "resolved-4",
-		question: "Will the Monad price double in Q3?",
-		creator: "MockUserPublicKey",
-		isApproved: true,
-		isResolved: true,
-		resolution: 202,
-		totalPool: 5000,
-		totalPositions: 100,
-		endTime: Date.now() - 172800000,
-		startTime: Date.now() - 86400000,
-		category: "Sports",
-		creatorFeeRevenue: 500,
-		description: "Market Description",
-		minPredictionPrice: 10000,
-		totalScores: 99999999,
-	},
-];
-
-const mockResolvedPositionsData: Position[] = [
-	{
-		id: "pos-resolved-1-won-claimed",
-		market: "resolved-1",
-		user: "MockUserPublicKey",
-		stake: 50,
-		prediction: 21,
-		reward: 95,
-		claimed: true,
-		timestamp: Date.now() - 100000000,
-	},
-
-	{
-		id: "pos-resolved-2-won-claimable",
-		market: "resolved-2",
-		user: "MockUserPublicKey",
-		stake: 100,
-		prediction: 21,
-		reward: 180,
-		claimed: false,
-		timestamp: Date.now() - 150000000,
-	},
-
-	{
-		id: "pos-resolved-2-lost-claimed",
-		market: "resolved-2",
-		user: "MockUserPublicKey",
-		stake: 20,
-		prediction: 12,
-		reward: undefined,
-		claimed: true,
-		timestamp: Date.now() - 150000000,
-	},
-];
-
-const mockAllMarkets = [
-	...mockResolvedMarketsData,
-	{
-		id: "unresolved-1",
-		question: "Will the S&P 500 be up next week?",
-		creator: "MockUserPublicKey",
-		isApproved: true,
-		isResolved: false,
-		totalPool: 200,
-		totalPositions: 10,
-		endTime: Date.now() + 86400000,
-		startTime: Date.now() - 86400000,
-		category: "Sports",
-		creatorFeeRevenue: 0,
-		description: "Market Description",
-		minPredictionPrice: 10000,
-	},
-
-	{
-		id: "unresolved-2",
-		question: "Next major tech innovation?",
-		creator: "OtherCreator",
-		isApproved: true,
-		isResolved: false,
-		totalPool: 500,
-		totalPositions: 20,
-		endTime: Date.now() + 172800000,
-		startTime: Date.now() - 86400000,
-		category: "Sports",
-		creatorFeeRevenue: 10000,
-		description: "Market Description",
-		minPredictionPrice: 10000,
-	},
-];
-
-const mockAllPositions = [
-	...mockResolvedPositionsData,
-	{
-		id: "pos-unresolved-1",
-		market: "unresolved-1",
-		user: "MockUserPublicKey",
-		stake: 10,
-		prediction: 213,
-		reward: undefined,
-		claimed: false,
-		timestamp: Date.now() - 1000000,
-	},
-
-	{
-		id: "pos-unresolved-2",
-		market: "unresolved-2",
-		user: "MockUserPublicKey",
-		stake: 50,
-		prediction: 132,
-		reward: undefined,
-		claimed: false,
-		timestamp: Date.now() - 500000,
-	},
-];
+type MarketType = Awaited<ReturnType<typeof fetchMarketAccount>>;
+type PositionType = Awaited<ReturnType<typeof fetchPositionAccount>>;
 
 interface UserMarketData {
-	market: Market;
-	userPosition?: Position;
+	market: MarketType;
+	userPosition?: PositionType;
 	isCreator: boolean;
 }
 
 const Profile: React.FC = () => {
 	const { connect, connection, isConnected, signTransaction, userPublicKey } =
 		useSolanaWallet();
-	const [allUserPositions, setAllUserPositions] = useState<Position[]>([]);
-	const [allMarkets, setAllMarkets] = useState<Market[]>(mockAllMarkets);
+	const [allUserPositions, setAllUserPositions] = useState<
+		Awaited<ReturnType<typeof fetchAllUserPositionAccounts>>
+	>([]);
+	const [allMarkets, setAllMarkets] = useState<
+		Awaited<ReturnType<typeof fetchAllMarketAccounts>>
+	>([]);
 	const [loading, setLoading] = useState(true);
 	const [isClaiming, setIsClaiming] = useState(false);
 	const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-	const userId = "MockUserPublicKey";
-
 	const isTransactionPending = isClaiming || isWithdrawing;
 
-	const handleClaimReward = async (position: string, market: string) => {
+	const handleClaimReward = async (positionId: number, market: string) => {
 		if (!userPublicKey || !signTransaction || isTransactionPending) return;
 
 		setIsClaiming(true);
 
 		try {
-			const tx = await claimReward(market, position, userPublicKey);
+			const tx = await claimReward(positionId, market, userPublicKey);
 			const signedTx = await signTransaction(tx);
 			const signature = await connection.sendRawTransaction(
 				signedTx.serialize()
@@ -253,17 +97,16 @@ const Profile: React.FC = () => {
 
 	useEffect(() => {
 		const loadUserMarketsAndPositions = async () => {
-			if (!userId) return;
+			if (!userPublicKey) return;
 
 			setLoading(true);
 			try {
-				const [userPositions] = await Promise.all([
-					Promise.resolve(
-						mockAllPositions.filter((p) => p.user === userId)
-					),
-				]);
+				const userPositions = await fetchAllUserPositionAccounts(
+					userPublicKey.toBase58()
+				);
+				const markets = await fetchAllMarketAccounts();
 				setAllUserPositions(userPositions);
-				setAllMarkets(mockAllMarkets);
+				setAllMarkets(markets);
 			} catch (error) {
 				console.error("Failed to load user data:", error);
 				toast.error("Failed to load profile data");
@@ -272,17 +115,17 @@ const Profile: React.FC = () => {
 			}
 		};
 
-		if (isConnected || userId === "MockUserPublicKey") {
+		if (isConnected) {
 			loadUserMarketsAndPositions();
 		}
-	}, [isConnected, userId]);
+	}, [isConnected, userPublicKey]);
 
 	const {
 		unclaimedPositionRewards,
 		activeProposedMarkets,
 		resolvedMarketsHistory,
 	} = useMemo(() => {
-		if (loading || allMarkets.length === 0) {
+		if (loading || !userPublicKey || allMarkets.length === 0) {
 			return {
 				unclaimedPositionRewards: [],
 				activeProposedMarkets: [],
@@ -290,25 +133,30 @@ const Profile: React.FC = () => {
 			};
 		}
 
-		const marketsById = new Map<string, Market>(
-			allMarkets.map((m) => [m.id, m])
+		const marketsById = new Map<string, MarketType>(
+			allMarkets.map((m) => [m.state.marketConfig.toBase58(), m])
 		);
 
 		const userPositionsByMarket = allUserPositions.reduce((acc, pos) => {
-			const marketId = pos.market;
+			const marketId = pos.account.market.toBase58();
 			if (acc.has(marketId)) {
-				acc.get(marketId)!.push(pos);
+				acc.get(marketId)!.push(pos.account);
 			} else {
-				acc.set(marketId, [pos]);
+				acc.set(marketId, [pos.account]);
 			}
 			return acc;
-		}, new Map<string, Position[]>());
+		}, new Map<string, PositionType[]>());
 
 		const allUserMarketData: UserMarketData[] = [];
 
 		const relevantMarketIds = new Set([
 			...Array.from(userPositionsByMarket.keys()),
-			...allMarkets.filter((m) => m.creator === userId).map((m) => m.id),
+			...allMarkets
+				.filter(
+					(m) =>
+						m.config.creator.toBase58() === userPublicKey.toBase58()
+				)
+				.map((m) => m.state.marketConfig.toBase58()),
 		]);
 
 		relevantMarketIds.forEach((marketId) => {
@@ -317,7 +165,8 @@ const Profile: React.FC = () => {
 
 			if (!market) return;
 
-			const isCreator = market.creator === userId;
+			const isCreator =
+				market.config.creator.toBase58() === userPublicKey.toBase58();
 
 			if (userPosition) {
 				userPosition.forEach((p) => {
@@ -343,40 +192,28 @@ const Profile: React.FC = () => {
 			const { market, userPosition, isCreator } = item;
 
 			const isUnclaimedPositionReward =
-				!!userPosition &&
-				market.isResolved &&
-				!!userPosition.reward &&
-				!userPosition.claimed;
+				!!userPosition && !userPosition.claimed;
 
-			const isCreatorUnresolved = isCreator && !market.isResolved;
+			const isCreatorUnresolved = isCreator && !market?.state.isResolved;
 			const isWithdrawableCreatorRevenue =
-				isCreator && market.isResolved && market.creatorFeeRevenue > 0;
+				isCreator &&
+				market?.state.isResolved &&
+				market.state.creatorFeeRevenue.toNumber() > 0;
 			const isCreatorActive =
 				isCreatorUnresolved || isWithdrawableCreatorRevenue;
 
 			const isHistory =
-				market.isResolved &&
+				market?.state.isResolved &&
 				// If user is predictor: position is claimed OR user lost
 				(!userPosition ||
 					userPosition.claimed ||
 					userPosition.reward) &&
 				// If user is creator: revenue withdrawn
-				(!isCreator || market.creatorFeeRevenue <= 0);
+				(!isCreator || market.state.creatorFeeRevenue.toNumber() <= 0);
 
-			if (isUnclaimedPositionReward) {
-				unclaimedPositionRewards.push(item);
-				return;
-			}
-
-			if (isCreatorActive) {
-				activeProposedMarkets.push(item);
-				return;
-			}
-
-			if (isHistory) {
-				resolvedMarketsHistory.push(item);
-				return;
-			}
+			if (isUnclaimedPositionReward) unclaimedPositionRewards.push(item);
+			if (isCreatorActive) activeProposedMarkets.push(item);
+			if (isHistory) resolvedMarketsHistory.push(item);
 		});
 
 		return {
@@ -384,14 +221,15 @@ const Profile: React.FC = () => {
 			activeProposedMarkets,
 			resolvedMarketsHistory,
 		};
-	}, [loading, allMarkets, allUserPositions, userId]);
+	}, [loading, allMarkets, allUserPositions, userPublicKey]);
 
-	const totalStaked = allUserPositions.reduce(
-		(sum, postion) => sum + postion.stake,
-		0
-	);
+	const totalStaked =
+		allUserPositions.reduce(
+			(sum, postion) => sum + postion.account.stake.toNumber(),
+			0
+		) / LAMPORTS_PER_SOL;
 	const totalWinnings = allUserPositions.reduce(
-		(sum, postion) => sum + (postion.reward || 0),
+		(sum, postion) => sum + (postion.account.reward?.toNumber() || 0),
 		0
 	);
 
@@ -412,7 +250,10 @@ const Profile: React.FC = () => {
 										Wallet Address
 									</span>
 									<div className="font-mono text-sm">
-										{truncateAddress(userId || "", 8)}
+										{truncateAddress(
+											userPublicKey?.toBase58() || "",
+											8
+										)}
 									</div>
 								</div>
 								<div className="md:text-center">
@@ -467,13 +308,12 @@ const Profile: React.FC = () => {
 								<div className="space-y-4">
 									{unclaimedPositionRewards.map((data) => (
 										<MarketCard
-											key={data.market.id}
+											key={data.market?.state.marketConfig.toBase58()}
 											market={data.market}
+											userPosition={data.userPosition}
 											userContextData={{
-												market: data.market,
 												isCreator: data.isCreator,
 												panelType: "UnclaimedRewards",
-												userPosition: data.userPosition,
 												isTransactionPending,
 												onWithdrawRevenue:
 													handleWithdrawRevenue,
@@ -515,13 +355,11 @@ const Profile: React.FC = () => {
 								<div className="space-y-4">
 									{activeProposedMarkets.map((data) => (
 										<MarketCard
-											key={data.market.id}
+											key={data.market?.state.marketConfig.toBase58()}
 											market={data.market}
 											userContextData={{
-												market: data.market,
 												isCreator: data.isCreator,
 												panelType: "UnwithdrawnRevenue",
-												userPosition: data.userPosition,
 												isTransactionPending,
 												onWithdrawRevenue:
 													handleWithdrawRevenue,
@@ -563,13 +401,12 @@ const Profile: React.FC = () => {
 								<div className="space-y-4">
 									{resolvedMarketsHistory.map((data) => (
 										<MarketCard
-											key={data.market.id}
+											key={data.market?.state.marketConfig.toBase58()}
 											market={data.market}
+											userPosition={data.userPosition}
 											userContextData={{
-												market: data.market,
 												isCreator: data.isCreator,
 												panelType: "History",
-												userPosition: data.userPosition,
 												isTransactionPending,
 												onWithdrawRevenue:
 													handleWithdrawRevenue,

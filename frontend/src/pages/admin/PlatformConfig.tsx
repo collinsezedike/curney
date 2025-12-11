@@ -8,9 +8,9 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
 import { useSolanaWallet } from "../../hooks/useSolanaWallet";
-import type { PlatformConfig as PlatformConfigType } from "../../lib/types";
-import { mockApi } from "../../lib/mockApi";
 import { updatePlatformConfig } from "../../lib/program/instructions";
+import { fetchPlatformConfigAccount } from "../../lib/program/utils";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 const configSchema = z.object({
 	platformFeeBps: z.number().min(0).max(10),
@@ -23,7 +23,8 @@ type ConfigFormData = z.infer<typeof configSchema>;
 const PlatformConfig: React.FC = () => {
 	const { connection, signTransaction, userPublicKey } = useSolanaWallet();
 
-	const [config, setConfig] = useState<PlatformConfigType | null>(null);
+	const [config, setConfig] =
+		useState<Awaited<ReturnType<typeof fetchPlatformConfigAccount>>>(null);
 	const [loading, setLoading] = useState(true);
 	const [updating, setUpdating] = useState(false);
 
@@ -39,13 +40,18 @@ const PlatformConfig: React.FC = () => {
 	useEffect(() => {
 		const loadConfig = async () => {
 			try {
-				const data = await mockApi.getPlatformConfig();
+				const data = await fetchPlatformConfigAccount();
 				setConfig(data);
-				reset({
-					platformFeeBps: data.platformFeeBps,
-					creatorFeeBps: data.creatorFeeBps,
-					marketProposalFee: data.marketProposalFee,
-				});
+				if (data) {
+					const defaultValues: ConfigFormData = {
+						platformFeeBps: data.platformFeeBps / 10000,
+						creatorFeeBps: data.creatorFeeBps / 10000,
+						marketProposalFee:
+							data.marketProposalFee.toNumber() /
+							LAMPORTS_PER_SOL,
+					};
+					reset(defaultValues);
+				}
 			} catch (error) {
 				console.error("Failed to load config:", error);
 				toast.error("Failed to load platform configuration");
@@ -55,7 +61,7 @@ const PlatformConfig: React.FC = () => {
 		};
 
 		loadConfig();
-	}, [reset]);
+	}, []);
 
 	const handleUpdatePlatformConfig = async (formData: ConfigFormData) => {
 		if (!userPublicKey || !signTransaction) return;
@@ -141,7 +147,7 @@ const PlatformConfig: React.FC = () => {
 							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 								<div className="text-center p-4 bg-gray-50 rounded-lg">
 									<div className="text-2xl font-bold text-gray-900">
-										{config.platformFeeBps}%
+										{config.platformFeeBps / 10000}%
 									</div>
 									<div className="text-gray-600">
 										Platform Fee
@@ -149,7 +155,7 @@ const PlatformConfig: React.FC = () => {
 								</div>
 								<div className="text-center p-4 bg-gray-50 rounded-lg">
 									<div className="text-2xl font-bold text-gray-900">
-										{config.creatorFeeBps}%
+										{config.creatorFeeBps / 10000}%
 									</div>
 									<div className="text-gray-600">
 										Creator Fee
@@ -157,7 +163,8 @@ const PlatformConfig: React.FC = () => {
 								</div>
 								<div className="text-center p-4 bg-gray-50 rounded-lg">
 									<div className="text-2xl font-bold text-gray-900">
-										${config.marketProposalFee}
+										{config.marketProposalFee.toNumber() /
+											LAMPORTS_PER_SOL}
 									</div>
 									<div className="text-gray-600">
 										Market Proposal Fee

@@ -1,5 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
-import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
+import {
+	clusterApiUrl,
+	Connection,
+	LAMPORTS_PER_SOL,
+	PublicKey,
+} from "@solana/web3.js";
 import IDL from "./idl.json";
 import type { CurneyMarkets } from "./types";
 
@@ -7,12 +12,16 @@ const FIXED_POINT_SCALE = 1e9;
 const DECAY_NORMALIZATION_FACTOR = 3600;
 
 export const PLATFORM_CONFIG = new PublicKey(
-	"32a2kKSydtMVzkE92BnNMAh5RTfk2i8owDNt32tqkBSE"
+	import.meta.env.VITE_PLATFORM_CONFIG
 );
 
 export const PLATFORM_TREASURY = new PublicKey(
-	"32a2kKSydtMVzkE92BnNMAh5RTfk2i8owDNt32tqkBSE"
+	import.meta.env.VITE_PLATFORM_TREASURY
 );
+
+// export const connection = new Connection("http://127.0.0.1:8899", {
+// 	commitment: "confirmed",
+// });
 
 export const connection = new Connection(clusterApiUrl("devnet"), {
 	commitment: "confirmed",
@@ -112,10 +121,19 @@ export const getPositionPDA = (
 	return position;
 };
 
-export const fetchPlatformConfigAccount = async (platformConfig: string) => {
+export const getPlatformTreasuryBalance = async () => {
 	try {
-		const platformConfigPubKey = new PublicKey(platformConfig);
-		return await program.account.platformConfig.fetch(platformConfigPubKey);
+		return (
+			(await connection.getBalance(PLATFORM_TREASURY)) / LAMPORTS_PER_SOL
+		);
+	} catch {
+		return null;
+	}
+};
+
+export const fetchPlatformConfigAccount = async () => {
+	try {
+		return await program.account.platformConfig.fetch(PLATFORM_CONFIG);
 	} catch {
 		return null;
 	}
@@ -239,6 +257,36 @@ export const fetchAllProposedMarketConfigAccounts = async (creator: string) => {
 	}
 };
 
+export const fetchMarketAccount = async (market: string) => {
+	const config = await fetchMarketConfigAccount(market);
+	if (!config) return null;
+	const state = await fetchMarketStateAccount(config.marketState.toBase58());
+	if (!state) return null;
+	return { config, state };
+};
+
+export const fetchAllMarketAccounts = async () => {
+	try {
+		const configAccounts = await fetchAllMarketConfigAccounts();
+		const marketPromises = configAccounts.map(async (m) => {
+			const state = await fetchMarketStateAccount(
+				m.account.marketState.toBase58()
+			);
+			if (!state) throw Error();
+			return { config: m.account, state };
+		});
+		return Promise.all(marketPromises);
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllApprovedMarketAccounts = async () => {
+	const markets = await fetchAllMarketAccounts();
+	if (!markets) return [];
+	return markets.filter((m) => m.state.isApproved);
+};
+
 export const fetchPositionAccount = async (position: string) => {
 	try {
 		const positionPubKey = new PublicKey(position);
@@ -252,6 +300,20 @@ export const fetchAllUserPositionAccounts = async (user: string) => {
 	try {
 		return (await program.account.position.all()).filter(
 			(p) => p.account.user.toBase58() == user
+		);
+	} catch {
+		return [];
+	}
+};
+
+export const fetchAllUserPositionAccountsByMarket = async (
+	user: string,
+	marketConfig: string
+) => {
+	try {
+		const positions = await fetchAllUserPositionAccounts(user);
+		return positions.filter(
+			(p) => p.account.market.toBase58() == marketConfig
 		);
 	} catch {
 		return [];

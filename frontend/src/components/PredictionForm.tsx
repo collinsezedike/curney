@@ -3,16 +3,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@radix-ui/themes";
 import { PredictionFormSchema } from "../lib/types";
-import type { Market, PredictionFormData } from "../lib/types";
+import type { PredictionFormData } from "../lib/types";
 
 interface PredictionFormProps {
-	market: Market;
 	onSubmit: (data: PredictionFormData) => void;
 	isLoading?: boolean;
 }
 
 const PredictionForm: React.FC<PredictionFormProps> = ({
-	market,
 	onSubmit,
 	isLoading = false,
 }) => {

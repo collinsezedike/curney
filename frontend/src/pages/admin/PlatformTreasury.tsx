@@ -7,6 +7,7 @@ import AdminNav from "../../components/AdminNav";
 import { useSolanaWallet } from "../../hooks/useSolanaWallet";
 import { withdrawPlatformFees } from "../../lib/program/instructions";
 import { formatCurrency } from "../../lib/helpers";
+import { getPlatformTreasuryBalance } from "../../lib/program/utils";
 
 const PlatformTreasury: React.FC = () => {
 	const { connection, signTransaction, userPublicKey } = useSolanaWallet();
@@ -18,7 +19,7 @@ const PlatformTreasury: React.FC = () => {
 	useEffect(() => {
 		const loadBalance = async () => {
 			try {
-				setBalance(Math.random() * 1e5);
+				setBalance(await getPlatformTreasuryBalance());
 			} catch (error) {
 				console.error("Failed to load treasury balance:", error);
 				toast.error("Failed to load treasury balance");
@@ -28,7 +29,7 @@ const PlatformTreasury: React.FC = () => {
 		};
 
 		loadBalance();
-	}, []);
+	}, [balance]);
 
 	const handleWithdrawFees = async () => {
 		if (!userPublicKey || !signTransaction) return;
@@ -89,7 +90,7 @@ const PlatformTreasury: React.FC = () => {
 					) : (
 						<div className="text-center p-6 bg-lime-50 rounded-lg border border-lime-200 mb-6">
 							<div className="text-4xl font-extrabold text-lime-700">
-								{formatCurrency(balance || 0)}
+								{formatCurrency(balance || 0)} SOL
 							</div>
 							<div className="text-lime-600 mt-1">
 								Available for Withdrawal

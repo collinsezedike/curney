@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
@@ -9,38 +9,31 @@ import Footer from "../../components/Footer";
 import AdminNav from "../../components/AdminNav";
 import MarketForm from "../../components/MarketForm";
 import { useSolanaWallet } from "../../hooks/useSolanaWallet";
-import { mockApi } from "../../lib/mockApi";
-import { formatCurrency, formatDate } from "../../lib/helpers";
+import {
+	convertTimestamp,
+	formatCurrency,
+	formatDate,
+} from "../../lib/helpers";
 import { ResolveMarketFormSchema } from "../../lib/types";
-import type { Market, MarketFormData, ResolveFormData } from "../../lib/types";
+import type { MarketFormData, ResolveFormData } from "../../lib/types";
 import {
 	approveMarket,
 	dismissMarket,
 	resolveMarket,
 	updateMarketConfig,
 } from "../../lib/program/instructions";
-
-const mapMarketToFormData = (market: Market): MarketFormData => {
-	const formatForInput = (isoString: string): string => {
-		return isoString.slice(0, 16);
-	};
-
-	return {
-		question: market.question,
-		description: market.description,
-		category: market.category,
-		minPredictionPrice: market.minPredictionPrice,
-		startTime: formatForInput(new Date(market.startTime).toISOString()),
-		endTime: formatForInput(new Date(market.endTime).toISOString()),
-	};
-};
+import { fetchMarketAccount } from "../../lib/program/utils";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useTimeSync } from "../../context/TimeSyncProvider";
 
 const AdminMarketDetail: React.FC = () => {
+	const navigate = useNavigate();
 	const { id } = useParams<{ id: string }>();
-	const { connect, connection, isConnected, signTransaction, userPublicKey } =
-		useSolanaWallet();
+	const { timeOffsetMs } = useTimeSync();
+	const { connection, signTransaction, userPublicKey } = useSolanaWallet();
 
-	const [market, setMarket] = useState<Market | null>(null);
+	const [market, setMarket] =
+		useState<Awaited<ReturnType<typeof fetchMarketAccount>>>(null);
 	const [loading, setLoading] = useState(true);
 	const [updating, setUpdating] = useState(false);
 	const [resolving, setResolving] = useState(false);
@@ -55,12 +48,36 @@ const AdminMarketDetail: React.FC = () => {
 		resolver: zodResolver(ResolveMarketFormSchema),
 	});
 
+	const mapMarketToFormData = (
+		market: Awaited<ReturnType<typeof fetchMarketAccount>>
+	): MarketFormData => {
+		const formatForInput = (timestamp: number): string => {
+			const date = new Date(convertTimestamp(timestamp, timeOffsetMs));
+			const pad = (num: number) => num.toString().padStart(2, "0");
+			const year = date.getFullYear();
+			const month = pad(date.getMonth() + 1);
+			const day = pad(date.getDate());
+			const hours = pad(date.getHours());
+			const minutes = pad(date.getMinutes());
+			return `${year}-${month}-${day}T${hours}:${minutes}`;
+		};
+
+		return {
+			question: market?.config.question ?? "",
+			description: market?.config.description ?? "",
+			minPredictionPrice:
+				market?.config.minPredictionPrice.toNumber() / LAMPORTS_PER_SOL,
+			startTime: formatForInput(market?.config.startTime.toNumber()),
+			endTime: formatForInput(market?.config.endTime.toNumber()),
+		};
+	};
+
 	useEffect(() => {
 		const loadMarket = async () => {
 			if (!id) return;
 
 			try {
-				const marketData = await mockApi.getMarket(id);
+				const marketData = await fetchMarketAccount(id);
 				setMarket(marketData);
 			} catch (error) {
 				console.error("Failed to load market:", error);
@@ -73,7 +90,10 @@ const AdminMarketDetail: React.FC = () => {
 		loadMarket();
 	}, [id]);
 
-	if (!id) return <Navigate to="/admin/dashboard" replace />;
+	if (!id) {
+		navigate("/admin/dashboard");
+		return;
+	}
 
 	const handleResolveMarket = async (data: ResolveFormData) => {
 		if (!userPublicKey || !signTransaction) return;
@@ -107,12 +127,12 @@ const AdminMarketDetail: React.FC = () => {
 
 		try {
 			const tx = await updateMarketConfig({
-				marketId: id,
+				marketConfig: id,
 				admin: userPublicKey,
 				question: data.question,
 				description: data.description,
-				startTime: new Date(data.startTime).getTime(),
-				endTime: new Date(data.endTime).getTime(),
+				startTime: new Date(data.startTime).getTime() / 1000,
+				endTime: new Date(data.endTime).getTime() / 1000,
 				minPredictionPrice: data.minPredictionPrice,
 			});
 			const signedTx = await signTransaction(tx);
@@ -152,6 +172,7 @@ const AdminMarketDetail: React.FC = () => {
 				signature: signature,
 			});
 			toast.success("Market approved successfully!");
+			navigate("/admin/dashboard");
 		} catch (error) {
 			console.error("Failed to approve market:", error);
 			toast.error("Failed to approve market");
@@ -166,7 +187,11 @@ const AdminMarketDetail: React.FC = () => {
 		setDismissing(true);
 
 		try {
-			const tx = await dismissMarket(id, market.creator, userPublicKey);
+			const tx = await dismissMarket(
+				id,
+				market.config.creator.toBase58(),
+				userPublicKey
+			);
 			const signedTx = await signTransaction(tx);
 			const signature = await connection.sendRawTransaction(
 				signedTx.serialize()
@@ -178,6 +203,7 @@ const AdminMarketDetail: React.FC = () => {
 				signature: signature,
 			});
 			toast.success("Market dismissed successfully!");
+			navigate("/admin/dashboard");
 		} catch (error) {
 			console.error("Failed to dismiss market:", error);
 			toast.error("Failed to dismiss market");
@@ -232,36 +258,86 @@ const AdminMarketDetail: React.FC = () => {
 					<div className="bg-white border border-gray-200 rounded-lg p-6">
 						<div className="flex justify-between items-start mb-4">
 							<h2 className="text-xl font-bold text-gray-900">
-								{market.question}
+								{market.config.question}
 							</h2>
 							<span
 								className={`flex capitalize items-center gap-1 ${
-									market.isResolved
+									market.state.isResolved
 										? "text-red-400"
-										: market.isApproved
+										: new Date() <
+												new Date(
+													convertTimestamp(
+														market.config.endTime.toNumber(),
+														timeOffsetMs
+													)
+												) &&
+										  new Date() >=
+												new Date(
+													convertTimestamp(
+														market.config.startTime.toNumber(),
+														timeOffsetMs
+													)
+												) &&
+										  market.state.isApproved
 										? "text-green-400"
 										: "text-amber-400"
 								}`}
 							>
 								<span
 									className={`w-2 h-2 rounded-full ${
-										market.isResolved
+										market.state.isResolved
 											? "bg-red-400"
-											: market.isApproved
+											: new Date() <
+													new Date(
+														convertTimestamp(
+															market.config.endTime.toNumber(),
+															timeOffsetMs
+														)
+													) &&
+											  new Date() >=
+													new Date(
+														convertTimestamp(
+															market.config.startTime.toNumber(),
+															timeOffsetMs
+														)
+													) &&
+											  market.state.isApproved
 											? "bg-green-400"
 											: "bg-amber-400"
 									}`}
 								></span>
-								{market.isResolved
+								{market.state.isResolved
 									? "Resolved"
-									: market.isApproved
+									: new Date() <
+											new Date(
+												convertTimestamp(
+													market.config.endTime.toNumber(),
+													timeOffsetMs
+												)
+											) &&
+									  new Date() >=
+											new Date(
+												convertTimestamp(
+													market.config.startTime.toNumber(),
+													timeOffsetMs
+												)
+											) &&
+									  market.state.isApproved
 									? "Live"
-									: "Pending"}
+									: new Date() <=
+									  new Date(
+											convertTimestamp(
+												market.config.startTime.toNumber(),
+												timeOffsetMs
+											)
+									  )
+									? "Yet to Start"
+									: "Pending Resolution"}
 							</span>
 						</div>
 
 						<p className="text-gray-600 mb-6">
-							{market.description}
+							{market.config.description}
 						</p>
 
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -270,32 +346,34 @@ const AdminMarketDetail: React.FC = () => {
 									Total Pool
 								</span>
 								<div className="font-semibold text-lg">
-									{formatCurrency(market.totalPool)}
+									{formatCurrency(
+										market.state.totalPool.toNumber() /
+											LAMPORTS_PER_SOL
+									)}
 								</div>
 							</div>
 							<div>
 								<span className="text-gray-500">
-									Total Bets
+									Total Predictions
 								</span>
 								<div className="font-semibold text-lg">
-									{market.totalPositions}
-								</div>
-							</div>
-							<div>
-								<span className="text-gray-500">Category</span>
-								<div className="font-semibold text-lg capitalize">
-									{market.category}
+									{market.state.totalPositions.toNumber()}
 								</div>
 							</div>
 							<div>
 								<span className="text-gray-500">End Time</span>
 								<div className="font-semibold text-lg">
-									{formatDate(market.endTime)}
+									{formatDate(
+										convertTimestamp(
+											market.config.endTime.toNumber(),
+											timeOffsetMs
+										)
+									)}
 								</div>
 							</div>
 						</div>
 
-						{!market.isApproved && (
+						{!market.state.isApproved && (
 							<div className="mt-4 pt-6">
 								<div className="flex justify-between items-center gap-4">
 									<Button
@@ -327,8 +405,8 @@ const AdminMarketDetail: React.FC = () => {
 							</div>
 						)}
 
-						{market.isResolved &&
-							market.resolution !== undefined && (
+						{market.state.isResolved &&
+							market.state.resolution !== undefined && (
 								<div className="mt-6 p-4 bg-blue-50 rounded-lg">
 									<h3 className="font-semibold text-blue-900 mb-2">
 										Resolution
@@ -336,14 +414,14 @@ const AdminMarketDetail: React.FC = () => {
 									<p className="text-blue-800">
 										Final value:{" "}
 										<span className="font-bold">
-											{market.resolution}
+											{market.state.resolution}
 										</span>
 									</p>
 								</div>
 							)}
 					</div>
 
-					{!market.isApproved && (
+					{!market.state.isApproved && (
 						<div className="bg-white border border-gray-200 rounded-lg p-6">
 							<h2 className="text-xl font-bold text-gray-900 mb-4">
 								Update Market Config
@@ -361,9 +439,10 @@ const AdminMarketDetail: React.FC = () => {
 						</div>
 					)}
 
-					{market.isApproved &&
-						!market.isResolved &&
-						new Date() >= new Date(market.endTime) && (
+					{market.state.isApproved &&
+						!market.state.isResolved &&
+						new Date() >=
+							new Date(market.config.endTime.toNumber()) && (
 							<div className="bg-white border border-gray-200 rounded-lg p-6">
 								<h2 className="text-xl font-bold text-gray-900 mb-4">
 									Resolve Market

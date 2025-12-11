@@ -1,57 +1,68 @@
-import React, { useState } from "react";
+import React from "react";
 import { Clock, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { Position, Market } from "../lib/types";
 import {
 	formatTimeRemaining,
 	formatCurrency,
 	formatDate,
+	convertTimestamp,
 } from "../lib/helpers";
+import { fetchMarketAccount, fetchPositionAccount } from "../lib/program/utils";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useTimeSync } from "../context/TimeSyncProvider";
 
 interface UserContextData {
-	market: Market;
-	userPosition?: Position;
 	isCreator: boolean;
 	isTransactionPending: boolean;
 	panelType: "UnclaimedRewards" | "UnwithdrawnRevenue" | "History";
-	onClaimReward: (positionId: string, market: string) => void;
+	onClaimReward: (positionId: number, market: string) => void;
 	onWithdrawRevenue: (marketId: string) => void;
 }
 
 interface MarketCardProps {
-	market: Market;
+	market: Awaited<ReturnType<typeof fetchMarketAccount>>;
+	userPosition?: Awaited<ReturnType<typeof fetchPositionAccount>>;
 	userContextData?: UserContextData;
 }
 
-const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
+const MarketCard: React.FC<MarketCardProps> = ({
+	market,
+	userPosition,
+	userContextData,
+}) => {
+	const { timeOffsetMs } = useTimeSync();
+
 	const isProfileView = !!userContextData;
 
 	const data = isProfileView ? userContextData : { market };
-	const {
-		userPosition,
-		isCreator,
-		panelType,
-		onClaimReward,
-		onWithdrawRevenue,
-	} = data as Partial<UserContextData>;
-	const currentMarket = data.market;
+	const { isCreator, panelType, onClaimReward, onWithdrawRevenue } =
+		data as Partial<UserContextData>;
+	const currentMarket = market;
 
 	let claimButton: any;
 	let claimableText: any;
 
 	const isWithdrawableRevenue =
-		isCreator && currentMarket.creatorFeeRevenue > 0;
+		isCreator && currentMarket?.state.creatorFeeRevenue.toNumber() > 0;
 
 	if (isProfileView) {
-		if (panelType === "UnclaimedRewards" && userPosition) {
+		if (
+			panelType === "UnclaimedRewards" &&
+			userPosition &&
+			market?.state.isResolved &&
+			!!userPosition.reward
+		) {
 			claimableText = `Reward: ${formatCurrency(
-				userPosition.reward || 0
+				userPosition.reward?.toNumber() / LAMPORTS_PER_SOL || 0
 			)}`;
 			claimButton = (
 				<button
 					onClick={(e) => {
 						e.preventDefault();
-						onClaimReward!(userPosition.id, userPosition.market);
+						onClaimReward!(
+							userPosition.index.toNumber(),
+							userPosition.market.toBase58()
+						);
 					}}
 					disabled={userContextData.isTransactionPending}
 					className="bg-lime-500 hover:bg-lime-600 text-white px-4 py-3 rounded-md text-sm font-medium transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
@@ -59,19 +70,25 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 					Claim Reward
 				</button>
 			);
-		} else if (
-			panelType === "UnwithdrawnRevenue" &&
-			isWithdrawableRevenue
-		) {
-			const mockRevenue = currentMarket.totalPool * 0.05;
-			claimableText = `Creator Revenue: ${formatCurrency(mockRevenue)}`;
+		}
+
+		if (panelType === "UnwithdrawnRevenue" && isWithdrawableRevenue) {
+			claimableText = `Creator Revenue: ${formatCurrency(
+				currentMarket?.state.creatorFeeRevenue.toNumber() /
+					LAMPORTS_PER_SOL
+			)}`;
 			claimButton = (
 				<button
 					onClick={(e) => {
 						e.preventDefault();
-						onWithdrawRevenue!(currentMarket.id);
+						onWithdrawRevenue!(
+							currentMarket?.state.marketConfig.toBase58()!
+						);
 					}}
-					disabled={userContextData.isTransactionPending}
+					disabled={
+						userContextData.isTransactionPending ||
+						!currentMarket?.state.isResolved
+					}
 					className="bg-lime-500 hover:bg-lime-600 text-white px-4 py-3 rounded-md text-sm font-medium transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-80"
 				>
 					Withdraw Revenue
@@ -81,7 +98,10 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 	}
 
 	return (
-		<Link to={`/market/${currentMarket.id}`} className="block">
+		<Link
+			to={`/market/${currentMarket?.state.marketConfig.toBase58()}`}
+			className="block"
+		>
 			<div
 				className={`bg-white border border-gray-200 rounded-lg p-4 ${
 					isProfileView ? "shadow-sm" : "hover:shadow-md"
@@ -89,7 +109,7 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 			>
 				<div className="flex justify-between items-start mb-2">
 					<h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-						{currentMarket.question}
+						{currentMarket?.config.question}
 					</h3>
 				</div>
 
@@ -102,7 +122,7 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 										Your Prediction
 									</span>
 									<div className="font-medium">
-										{userPosition.prediction}
+										{userPosition.prediction.toNumber()}
 									</div>
 								</div>
 							)}
@@ -111,24 +131,32 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 									Total Pool
 								</span>
 								<div className="font-medium">
-									{formatCurrency(currentMarket.totalPool)}
+									{formatCurrency(
+										currentMarket?.state.totalPool.toNumber() /
+											LAMPORTS_PER_SOL
+									)}
 								</div>
 							</div>
 							<div>
 								<span className="text-gray-500">Closes</span>
 								<div className="font-medium">
-									{formatDate(currentMarket.endTime)}
+									{formatDate(
+										convertTimestamp(
+											currentMarket?.config.endTime.toNumber(),
+											timeOffsetMs
+										)
+									)}
 								</div>
 							</div>
 						</div>
 
-						{currentMarket.isResolved &&
-							currentMarket.resolution !== undefined && (
+						{currentMarket?.state.isResolved &&
+							currentMarket?.state.resolution !== undefined && (
 								<div className="bg-gray-50 p-3 rounded-lg mb-3">
 									<div className="text-sm text-gray-600">
 										Resolution:{" "}
 										<span className="font-medium text-green-700">
-											{currentMarket.resolution}
+											{currentMarket?.state.resolution}
 										</span>
 									</div>
 
@@ -137,14 +165,14 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 											Position Status:{" "}
 											<span
 												className={`font-medium ${
-													userPosition.reward
+													!!userPosition.reward
 														? userPosition.claimed
 															? "text-lime-600"
 															: "text-orange-600"
 														: "text-red-600"
 												}`}
 											>
-												{userPosition.reward
+												{!!userPosition.reward
 													? userPosition.claimed
 														? "Claimed"
 														: "Claimable"
@@ -158,13 +186,13 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 											Revenue Status:{" "}
 											<span
 												className={`font-medium ${
-													currentMarket.creatorFeeRevenue >
+													currentMarket.state.creatorFeeRevenue.toNumber() >
 													0
 														? "text-lime-600"
 														: "text-gray-500"
 												}`}
 											>
-												{currentMarket.creatorFeeRevenue <
+												{currentMarket.state.creatorFeeRevenue.toNumber() <
 												0
 													? "Withdrawn"
 													: "Withdrawable"}
@@ -186,7 +214,7 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 				) : (
 					<>
 						<p className="text-gray-600 text-sm mb-4 line-clamp-2">
-							{currentMarket.description}
+							{currentMarket?.config.description}
 						</p>
 
 						<div className="flex items-center justify-between text-sm text-gray-500">
@@ -194,24 +222,52 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, userContextData }) => {
 								<div className="flex items-center">
 									<span>
 										{formatCurrency(
-											currentMarket.totalPool
-										)}
+											currentMarket?.state.totalPool.toNumber() /
+												LAMPORTS_PER_SOL
+										)}{" "}
+										SOL
 									</span>
 								</div>
 								<div className="flex items-center">
 									<UsersRound className="w-4 h-4 mr-1" />
-									<span>{currentMarket.totalPositions}</span>
+									<span>
+										{currentMarket?.state.totalPositions.toNumber()}
+									</span>
 								</div>
 							</div>
 
-							{currentMarket.isApproved && (
+							{currentMarket?.state.isApproved && (
 								<div className="flex items-center text-lime-600">
 									<Clock className="w-4 h-4 mr-1" />
-									<span>
-										{formatTimeRemaining(
-											new Date(currentMarket.endTime)
-										)}
-									</span>
+									{new Date() <
+									new Date(
+										convertTimestamp(
+											currentMarket.config.startTime.toNumber(),
+											timeOffsetMs
+										)
+									) ? (
+										<span>
+											{formatTimeRemaining(
+												new Date(
+													convertTimestamp(
+														currentMarket?.config.startTime.toNumber(),
+														timeOffsetMs
+													)
+												)
+											)}
+										</span>
+									) : (
+										<span>
+											{formatTimeRemaining(
+												new Date(
+													convertTimestamp(
+														currentMarket?.config.endTime.toNumber(),
+														timeOffsetMs
+													)
+												)
+											)}
+										</span>
+									)}
 								</div>
 							)}
 						</div>

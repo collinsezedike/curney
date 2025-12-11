@@ -90,29 +90,6 @@ const MarketForm: React.FC<MarketFormProps> = ({
 
 			<div>
 				<label className="block text-sm font-medium text-gray-700 mb-2">
-					Category
-				</label>
-				<select
-					{...register("category")}
-					className="w-full px-3 py-2 border rounded-md"
-				>
-					<option value="">Select a category</option>
-					<option value="crypto">Cryptocurrency</option>
-					<option value="stocks">Stocks</option>
-					<option value="sports">Sports</option>
-					<option value="politics">Politics</option>
-					<option value="economics">Economics</option>
-					<option value="other">Other</option>
-				</select>
-				{errors.category && (
-					<p className="mt-1 text-sm text-red-600">
-						{errors.category.message}
-					</p>
-				)}
-			</div>
-
-			<div>
-				<label className="block text-sm font-medium text-gray-700 mb-2">
 					Minimum Prediction Price
 				</label>
 				<input
@@ -137,7 +114,7 @@ const MarketForm: React.FC<MarketFormProps> = ({
 				<input
 					{...register("startTime")}
 					type="datetime-local"
-					min={minDateTime.toISOString().slice(0, 16)}
+					min={minDateTime.toISOString()}
 					className="w-full px-3 py-2 border rounded-md"
 				/>
 				{errors.startTime && (
@@ -154,7 +131,7 @@ const MarketForm: React.FC<MarketFormProps> = ({
 				<input
 					{...register("endTime")}
 					type="datetime-local"
-					min={minDateTime.toISOString().slice(0, 16)}
+					min={minDateTime.toISOString()}
 					className="w-full px-3 py-2 border rounded-md"
 				/>
 				{errors.endTime && (
